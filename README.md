@@ -1,8 +1,7 @@
-# MinuteMeals 🍳 — React Native (JS) + Expo
+# MinuteMeals 🍳
 [![React Native](https://img.shields.io/badge/React%20Native-JavaScript-blue)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-Ready-000?logo=expo)](https://expo.dev/)
 [![Platform](https://img.shields.io/badge/Android%20%7C%20iOS%20%7C%20Web-supported-success)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
 
 Cook fast with what you already have. MinuteMeals matches your pantry to **10–15 minute** recipes, shows what you can cook **now**, and (optionally) builds a shopping list for missing items.  
 > **JS-only**. Mobile + Web via Expo. Future backend: **Node.js + SQL/MongoDB**.
@@ -62,7 +61,6 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 **Now (JavaScript only):**
 - React Native + **Expo** (Android • iOS • Web)
 - Expo SQLite, Expo Image/FileSystem, Expo Share/Notifications
-- Simple state via Context or Zustand (optional)
 
 **Future (Backend & CV):**
 - **Node.js** (Express)  
@@ -73,7 +71,7 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 ---
 
 ## 8. Expected Outcome
-- Suggest suitable recipes in **< 1s** for a pantry of 20–50 items  
+- Suggest suitable recipes in **less than 1sec**
 - Clear **Cook Now** vs **Missing items** decisions  
 - Simple shopping list flow; favorites & sharing
 
@@ -84,14 +82,6 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 - **Week 3–4:** favorites, shopping list, filters, web build  
 - **Week 5–6:** Node API + DB sync, auth (optional)  
 - **Week 7:** camera fridge scan + testing
-
----
-
-## 10. Additional Notes (Optional)
-- **Repo:** https://github.com/Pranay44444/MInuteMeals  
-- **License:** MIT  
-- Use a **synonyms table** to normalize detections (e.g., “bell pepper” → “capsicum”).  
-- Multilingual ingredient names help reach more users.
 
 ---
 
@@ -110,3 +100,9 @@ npx expo start           # press a (Android) or i (iOS)
 
 # Run (web)
 npx expo start --web
+```
+
+## 👨‍💻 Made with ❤️ by
+
+[Pranay Chitare](https://github.com/Pranay44444)
+
