@@ -1,4 +1,4 @@
-# MinuteMeals 🍳
+# MinuteMeals 🍲
 [![React Native](https://img.shields.io/badge/React%20Native-JavaScript-blue)](https://reactnative.dev/)
 [![Expo](https://img.shields.io/badge/Expo-Ready-000?logo=expo)](https://expo.dev/)
 [![Platform](https://img.shields.io/badge/Android%20%7C%20iOS%20%7C%20Web-supported-success)]()
