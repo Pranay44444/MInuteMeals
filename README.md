@@ -65,7 +65,7 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 - **Node.js** (Express)  
 - **DB:** MySQL (Prisma)  
 - Storage: S3/GCS for images  
-- **Fridge Scan (optional):** Google Vision / AWS Rekognition / Azure Vision
+- **Fridge Scan (optional):** Google Vision / Azure Vision
 
 ---
 
