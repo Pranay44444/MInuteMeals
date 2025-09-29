@@ -4,7 +4,7 @@
 [![Platform](https://img.shields.io/badge/Android%20%7C%20iOS%20%7C%20Web-supported-success)]()
 
 Cook fast with what you already have. MinuteMeals matches your pantry to **10–15 minute** recipes, shows what you can cook **now**, and (optionally) builds a shopping list for missing items.  
-> **JS-only**. Mobile + Web via Expo. Future backend: **Node.js + SQL/MongoDB**.
+> **JS-only**. Mobile + Web via Expo. Future backend: **Node.js + SQL**.
 
 ---
 
@@ -60,11 +60,10 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 ## 7. Technology Stack
 **Now (JavaScript only):**
 - React Native + **Expo** (Android • iOS • Web)
-- Expo SQLite, Expo Image/FileSystem, Expo Share/Notifications
 
 **Future (Backend & CV):**
 - **Node.js** (Express)  
-- **DB:** MySQL (Prisma) **or** MongoDB (Mongoose)  
+- **DB:** MySQL (Prisma)  
 - Storage: S3/GCS for images  
 - **Fridge Scan (optional):** Google Vision / AWS Rekognition / Azure Vision
 
