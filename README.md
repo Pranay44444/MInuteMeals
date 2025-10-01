@@ -83,3 +83,13 @@ git clone https://github.com/Pranay44444/MInuteMeals.git
 npm i
 npx expo install expo-sqlite expo-image expo-file-system expo-share expo-notifications
 
+# Run (native)
+npx expo start           # press a (Android) or i (iOS)
+
+# Run (web)
+npx expo start --web
+```
+
+## 👨‍💻 Made with ❤️ by
+
+[Pranay Chitare](https://github.com/Pranay44444)
