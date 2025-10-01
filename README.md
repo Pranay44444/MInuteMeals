@@ -40,16 +40,6 @@ A **React Native + Expo** app (JS) that:
 - ✅ Favorites & shareable recipe cards  
 - ✅ Offline-first with local `recipes.json` (Web + Mobile)
 
-<details>
-<summary><b>How Matching Works (tap to expand)</b></summary>
-
-- Compare user pantry keys (lowercased) with each recipe’s ingredients.  
-- Count **required vs optional** missing items.  
-- Return recipes where `missingRequired ≤ maxMissing` and `minutes ≤ maxTime`.  
-- Sort by `missingRequired ↑` then `minutes ↑`.
-
-</details>
-
 ---
 
 ## 6. Target Users / Audience
@@ -65,7 +55,7 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 - **Node.js** (Express)  
 - **DB:** MySQL (Prisma)  
 - Storage: S3/GCS for images  
-- **Fridge Scan (optional):** Google Vision / Azure Vision
+- **Scan Items(optional):** Google Vision / Azure Vision
 
 ---
 
@@ -80,7 +70,7 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 - **Week 1–2:** UI/UX, pantry, local `recipes.json`, matching  
 - **Week 3–4:** favorites, shopping list, filters, web build  
 - **Week 5–6:** Node API + DB sync, auth (optional)  
-- **Week 7:** camera fridge scan + testing
+- **Week 7:** scan items + testing
 
 ---
 
@@ -88,7 +78,6 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 ```bash
 # Clone
 git clone https://github.com/Pranay44444/MInuteMeals.git
-cd MInuteMeals
 
 # Install (JS-only)
 npm i
