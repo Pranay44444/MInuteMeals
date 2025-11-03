@@ -233,7 +233,8 @@ export const filterRecipes = (recipes,filters) => {
 
 const API_URL = 'https://api.spoonacular.com/recipes'
 const callAPI = async (endpoint,params = {})=>{
-  const apiKey = process.env.EXPO_PUBLIC_SPOONACULAR_API_KEY
+  const {getApiKey} = require('../utils/env')
+  const apiKey = getApiKey()
   if (!apiKey) {
     throw new Error('API key not available')
   }

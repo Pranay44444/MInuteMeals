@@ -9,7 +9,9 @@ export default {
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
-    plugins: [],
+    plugins: [
+      "expo-router"
+    ],
     extra: {
       spoonacularApiKey: process.env.SPOONACULAR_API_KEY
     },
