@@ -14,7 +14,7 @@ export default {
     ],
     extra: {
       spoonacularApiKey: process.env.SPOONACULAR_API_KEY,
-      azureVisionEndpoint: process.env.AZURE_VISION_ENDPOINT,
+      azureVisionEndpoint: process.env.AZURE_VISION_ENDPOINT || 'https://minutemeals-vision.cognitiveservices.azure.com',
       azureVisionKey: process.env.AZURE_VISION_KEY
     },
     splash: {
