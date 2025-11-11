@@ -1,12 +1,15 @@
 import React,{useState,useCallback} from 'react'
-import {View,Text,FlatList,StyleSheet,SafeAreaView,StatusBar,TouchableOpacity,Alert} from 'react-native'
+import {View,Text,FlatList,StyleSheet,SafeAreaView,StatusBar,TouchableOpacity,Alert,ActivityIndicator} from 'react-native'
 import {useNavigation} from '@react-navigation/native'
 import {Ionicons} from '@expo/vector-icons'
-import {useStore,addToPantry,removeFromPantry,setPantry} from '../services/store'
+import * as ImagePicker from 'expo-image-picker'
+import {useStore,addToPantry,removeFromPantry,setPantry,showSnackbar} from '../services/store'
 import {SearchBar} from '../components/SearchBar'
 import {ListItem} from '../components/ListItem'
 import {EmptyState} from '../components/EmptyState'
+import {IngredientConfirmationDialog} from '../components/IngredientConfirmationDialog'
 import {debounce} from '../utils/debounce'
+import {extractItemsFromImage} from '../services/imageScanning'
 
 const COMMON_INGREDIENTS = [
   'onion','garlic','tomato','potato','carrot','bell pepper',
@@ -22,6 +25,9 @@ export default function Pantry(){
   const [searchText,setSearchText] = useState('')
   const [suggestions,setSuggestions] = useState([])
   const [showSuggestions,setShowSuggestions] = useState(false)
+  const [scanning,setScanning] = useState(false)
+  const [detectedIngredients,setDetectedIngredients] = useState([])
+  const [showConfirmDialog,setShowConfirmDialog] = useState(false)
 
   const delayedSearch = useCallback(
     debounce((text)=>{
@@ -67,11 +73,126 @@ export default function Pantry(){
   },[searchText,addItem])
 
   const clickScan = useCallback(async ()=>{
-    Alert.alert(
-      'Scan Items',
-      'This feature is coming soon! It will use AI to identify ingredients from a photo of your items.',
-      [{text: 'OK',style: 'cancel'}]
-    )
+    try {
+      // Request camera permissions
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
+      
+      if (!permissionResult.granted) {
+        Alert.alert(
+          'Permission Required',
+          'Camera permission is required to scan your fridge. Please enable it in your device settings.',
+          [{text: 'OK'}]
+        )
+        return
+      }
+
+      // Show options: Camera or Gallery
+      Alert.alert(
+        'Scan Fridge',
+        'Choose how to add your photo',
+        [
+          {
+            text: 'Take Photo',
+            onPress: async () => {
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+              })
+              
+              if (!result.canceled && result.assets?.[0]?.uri) {
+                await processScanImage(result.assets[0].uri)
+              }
+            },
+          },
+          {
+            text: 'Choose from Gallery',
+            onPress: async () => {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+              })
+              
+              if (!result.canceled && result.assets?.[0]?.uri) {
+                await processScanImage(result.assets[0].uri)
+              }
+            },
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      )
+    } catch (error) {
+      console.error('Error requesting permissions:', error)
+      Alert.alert('Error', 'Failed to access camera. Please try again.')
+    }
+  },[])
+
+  const processScanImage = useCallback(async (imageUri) => {
+    setScanning(true)
+    try {
+      console.log('Processing image:', imageUri)
+      
+      // Extract ingredients from image using Azure Computer Vision
+      const ingredients = await extractItemsFromImage(imageUri)
+      
+      if (ingredients.length === 0) {
+        Alert.alert(
+          'No Ingredients Found',
+          'We couldn\'t detect any ingredients in the image. Try taking a clearer photo or add items manually.',
+          [{text: 'OK'}]
+        )
+        return
+      }
+
+      // Show confirmation dialog with detected items
+      setDetectedIngredients(ingredients)
+      setShowConfirmDialog(true)
+      
+    } catch (error) {
+      console.error('Scanning error:', error)
+      
+      let errorMessage = 'Failed to scan image. Please try again.'
+      
+      if (error.message?.includes('Azure Vision API key not configured')) {
+        errorMessage = 'Azure Vision is not configured. Please check your API credentials.'
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.'
+      }
+      
+      Alert.alert('Scanning Error', errorMessage, [{text: 'OK'}])
+    } finally {
+      setScanning(false)
+    }
+  },[])
+
+  const handleConfirmIngredients = useCallback((confirmedItems) => {
+    // Add confirmed items to pantry
+    let addedCount = 0
+    confirmedItems.forEach(item => {
+      if (!state.pantry.items.includes(item)) {
+        dispatch(addToPantry(item))
+        addedCount++
+      }
+    })
+    
+    setShowConfirmDialog(false)
+    setDetectedIngredients([])
+    
+    // Show success message
+    dispatch(showSnackbar(
+      `Added ${addedCount} new ingredient${addedCount !== 1 ? 's' : ''} to your pantry!`,
+      'VIEW RECIPES',
+      () => navigation.navigate('Matches')
+    ))
+  },[state.pantry.items,dispatch,navigation])
+
+  const handleCancelConfirmation = useCallback(() => {
+    setShowConfirmDialog(false)
+    setDetectedIngredients([])
   },[])
 
   const clickClear = useCallback(() => {
@@ -119,10 +240,20 @@ export default function Pantry(){
         autoFocus={false}/>
       <View style={styles.actions}>
         <TouchableOpacity 
-          style={[styles.action,styles.disabled]} 
-          onPress={clickScan}>
-          <Ionicons name="camera" size={20} color="#999" />
-          <Text style={[styles.actionText,styles.disabledText]}>Scan Items (coming soon)</Text>
+          style={[styles.action, scanning && styles.disabled]} 
+          onPress={clickScan}
+          disabled={scanning}>
+          {scanning ? (
+            <>
+              <ActivityIndicator size="small" color="#007AFF" />
+              <Text style={[styles.actionText,{color: '#007AFF'}]}>Scanning...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="camera" size={20} color="#007AFF" />
+              <Text style={[styles.actionText,{color: '#007AFF'}]}>Scan Fridge</Text>
+            </>
+          )}
         </TouchableOpacity>
         {state.pantry.items.length > 0 && (
           <TouchableOpacity 
@@ -188,6 +319,14 @@ export default function Pantry(){
       <StatusBar barStyle="dark-content" backgroundColor="white" />
       {showTop()}
       {showContent()}
+      
+      {/* Ingredient Confirmation Dialog */}
+      <IngredientConfirmationDialog
+        visible={showConfirmDialog}
+        ingredients={detectedIngredients}
+        onConfirm={handleConfirmIngredients}
+        onCancel={handleCancelConfirmation}
+      />
     </SafeAreaView>
   )
 }
