@@ -9,7 +9,7 @@ import {ListItem} from '../components/ListItem'
 import {EmptyState} from '../components/EmptyState'
 import {IngredientConfirmationDialog} from '../components/IngredientConfirmationDialog'
 import {debounce} from '../utils/debounce'
-import {extractItemsFromImage} from '../services/imageScanning'
+import {detectIngredients} from '../vision/robustDetector'
 
 const COMMON_INGREDIENTS = [
   'onion','garlic','tomato','potato','carrot','bell pepper',
@@ -136,8 +136,11 @@ export default function Pantry(){
     try {
       console.log('Processing image:', imageUri)
       
-      // Extract ingredients from image using Azure Computer Vision
-      const ingredients = await extractItemsFromImage(imageUri)
+      // Detect ingredients using robust two-stage pipeline
+      const detected = await detectIngredients(imageUri)
+      
+      // Extract names from detected results
+      const ingredients = detected.map(d => d.name)
       
       if (ingredients.length === 0) {
         Alert.alert(

@@ -1330,3 +1330,52 @@ export const extractItemsFromImage = async (imageUri) => {
     throw error
   }
 }
+
+// ==================== NEW UNIVERSAL EXTRACTOR ====================
+
+/**
+ * Extract ingredients using universal semantic pipeline
+ * Clean, minimal set of canonical ingredient names
+ * 
+ * @param {string} imageUri - Image URI to analyze
+ * @returns {Promise<string[]>} Array of ingredient names (1-3 items)
+ */
+export const extractIngredientsUniversal = async (imageUri) => {
+  try {
+    const { extractIngredients } = require('../vision/ingredientExtractor')
+    
+    // Get Azure configuration
+    const config = getAzureConfig()
+    
+    if (!config.key) {
+      throw new Error('Azure Vision API key not configured')
+    }
+    
+    console.log('Starting universal ingredient extraction...')
+    
+    // Call Azure Vision with all features
+    const fullFeatures = ['objects', 'tags', 'denseCaptions', 'read']
+    const visionResult = await analyzeUri(imageUri, config, fullFeatures)
+    
+    // Convert to extractor format
+    const azureResult = {
+      tags: visionResult.tagsResult?.values || [],
+      objects: (visionResult.objectsResult?.values || []).map(obj => ({
+        name: obj.tags?.[0]?.name || '',
+        confidence: obj.tags?.[0]?.confidence || 0
+      })).filter(o => o.name),
+      captions: visionResult.denseCaptionsResult?.values || []
+    }
+    
+    // Extract ingredients using universal pipeline
+    const ingredients = extractIngredients(azureResult)
+    
+    console.log(`✅ Extracted ${ingredients.length} ingredients:`, ingredients)
+    
+    return ingredients
+    
+  } catch (error) {
+    console.error('Universal extraction error:', error)
+    throw error
+  }
+}
