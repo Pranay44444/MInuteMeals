@@ -192,6 +192,40 @@ const GENERIC_INGREDIENT_LABELS = new Set<string>([
 
 // === VEG / FRUIT CANONICALIZATION ===
 
+// 🚫 Labels that are too generic to be useful as a final ingredient
+const GENERIC_VEG_LABELS = new Set<string>([
+  'fruit',
+  'fruits',
+  'vegetable',
+  'vegetables',
+  'produce',
+  'food',
+  'foods',
+  'natural foods',
+  'local food',
+  'local foods',
+  'diet food',
+  'diet foods',
+  'ingredient',
+  'ingredients',
+  'superfood',
+  'vegan nutrition',
+  'vegetarian food',
+  'whole food',
+  'root vegetable',
+  'leaf vegetable',
+  'accessory fruit',
+  'frutti di bosco'
+])
+
+function isGenericVegLabel(name?: string | null): boolean {
+  if (!name) return false
+  const key = name.toLowerCase().trim()
+  if (GENERIC_VEG_LABELS.has(key)) return true
+  if (key.endsWith('s') && GENERIC_VEG_LABELS.has(key.slice(0, -1))) return true
+  return false
+}
+
 // Labels we NEVER want as final ingredients (too generic or not food).
 const GENERIC_VEGFRUIT_TAGS = new Set<string>([
   'food',
@@ -299,6 +333,11 @@ const VEGFRUIT_CANONICAL_ALIASES: Record<string, string> = {
   // mango
   'mango': 'mango',
 
+  // stone fruits
+  'peach': 'peach',
+  'nectarine': 'peach',
+  'apricot': 'apricot',
+
   // cabbage
   'cabbage': 'cabbage',
   'wild cabbage': 'cabbage',
@@ -353,6 +392,8 @@ const BASE_INGREDIENT_KEYS = new Set<string>([
   'papaya',
   'lemon',
   'lime',
+  'peach',
+  'apricot',
 
   // vegetables / plant ingredients
   'tomato',
@@ -477,7 +518,101 @@ function chooseCanonicalVegFruitFromTags(azureTags: AzureTag[]): VegTagCandidate
     }
   }
 
+  // --- Stone-fruit vs apple disambiguation ---
+  const stoneFruitNames = new Set(['peach', 'apricot'])
+  const stoneCandidates = finalCandidates.filter(c => stoneFruitNames.has(c.canon))
+  const appleCandidates = finalCandidates.filter(c => c.canon === 'apple')
+
+  if (stoneCandidates.length && appleCandidates.length) {
+    const bestStone = stoneCandidates.reduce((a, b) => (a.confidence >= b.confidence ? a : b))
+    const bestApple = appleCandidates.reduce((a, b) => (a.confidence >= b.confidence ? a : b))
+
+    if (
+      bestStone.confidence >= 0.8 &&
+      bestApple.confidence <= bestStone.confidence + 0.04
+    ) {
+      return bestStone
+    }
+  }
+
   return best
+}
+
+function pickSpecificVegTagFromAzureTags(tags?: AzureTag[]): AzureTag | null {
+  if (!tags || tags.length === 0) return null
+
+  const specific = tags.filter(tag => !isGenericVegLabel(tag.name))
+  if (specific.length === 0) return null
+
+  const sorted = [...specific].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))
+  const best = sorted[0]
+
+  if ((best.confidence ?? 0) < 0.6) return null
+
+  return best
+}
+
+function finalizeVegOutput(
+  normalized: Detected[] | null,
+  tags: AzureTag[] | undefined,
+  stageLabel: string
+): Detected[] | null {
+  if (!normalized || normalized.length === 0) return null
+
+  let finalLabel = normalized[0].name
+  let finalScore = normalized[0].score
+
+  if (isGenericVegLabel(finalLabel)) {
+    if (tags && tags.length > 0) {
+      const salvage = pickSpecificVegTagFromAzureTags(tags)
+      if (salvage) {
+        const canonicalFromTag =
+          VEGFRUIT_CANONICAL_ALIASES[salvage.name.toLowerCase()] ??
+          salvage.name.toLowerCase()
+        console.log(
+          `🍃 Generic veg label "${finalLabel}" salvaged via tags → "${canonicalFromTag}" (${(
+            (salvage.confidence ?? 0) * 100
+          ).toFixed(1)}%)`
+        )
+        finalLabel = canonicalFromTag
+        finalScore = salvage.confidence ?? finalScore
+      } else {
+        console.log(
+          `🍃 Generic veg label "${finalLabel}" with no specific alternative – dropping ingredient`
+        )
+        return null
+      }
+    } else {
+      console.log(
+        `🍃 Generic veg label "${finalLabel}" with no tags available – dropping ingredient`
+      )
+      return null
+    }
+  }
+
+  if (isGenericVegLabel(finalLabel)) {
+    console.log(
+      `🍃 Still generic veg label "${finalLabel}" after salvage – treating as no ingredient`
+    )
+    return null
+  }
+
+  const canonicalVeg =
+    VEGFRUIT_CANONICAL_ALIASES[finalLabel.toLowerCase()] ??
+    finalLabel.toLowerCase()
+
+  const result = [{
+    name: canonicalVeg,
+    score: finalScore
+  }]
+
+  console.log(`🎉 FINAL RESULT (Veg canonical - ${stageLabel}):`)
+  result.forEach((item, idx) => {
+    console.log(`  ${idx + 1}. ${item.name}: ${(item.score * 100).toFixed(1)}%`)
+  })
+  console.log('╚═══════════════════════════════════════════╝\n')
+
+  return result
 }
 
 // Take existing detection (core/enhanced) and "snap" it to a canonical veg name from tags.
@@ -531,6 +666,67 @@ function applyNonVegResolution(
     name: override,
     score: NON_VEG_DEFAULT_SCORE
   }]
+}
+
+type MetaCaption = {
+  text?: string
+  content?: string
+  confidence?: number
+  confidenceScore?: number
+}
+
+function normalizeNonVegRaw(name?: string): string {
+  return (name || '').trim().toLowerCase()
+}
+
+function resolveCephalopodFromVision(
+  tags?: AzureTag[],
+  captions?: MetaCaption[]
+): Detected | null {
+  const allTags = tags ?? []
+  const allCaps = captions ?? []
+
+  let bestOctopusScore = 0
+  let bestSquidScore = 0
+
+  for (const t of allTags) {
+    const raw = (t as any).name ?? (t as any).tagName ?? ''
+    const norm = normalizeNonVegRaw(raw)
+    const conf = (t as any).confidence ?? (t as any).confidenceScore ?? t.confidence ?? 0
+
+    if (!norm) continue
+
+    if (norm.includes('octopus')) {
+      bestOctopusScore = Math.max(bestOctopusScore, conf)
+    } else if (norm.includes('squid')) {
+      bestSquidScore = Math.max(bestSquidScore, conf)
+    }
+  }
+
+  for (const c of allCaps) {
+    const text = normalizeNonVegRaw(c?.text ?? c?.content ?? '')
+    if (!text) continue
+    const conf = c?.confidence ?? c?.confidenceScore ?? 0.7
+
+    if (text.includes('octopus')) {
+      bestOctopusScore = Math.max(bestOctopusScore, conf)
+    }
+    if (text.includes('squid')) {
+      bestSquidScore = Math.max(bestSquidScore, conf)
+    }
+  }
+
+  const MIN_CEPHALOPOD_CONF = 0.6
+  const finalScore = Math.max(bestOctopusScore, bestSquidScore)
+
+  if (finalScore >= MIN_CEPHALOPOD_CONF) {
+    return {
+      name: 'octopus',
+      score: finalScore
+    }
+  }
+
+  return null
 }
 
 function logFinalResult(stageLabel: string, results: Detected[]): void {
@@ -1351,13 +1547,18 @@ export async function detectIngredients(uriOrBytes: string | Uint8Array): Promis
       // For veg/fruit, apply canonical name resolution from tags
       if (!isNonVeg) {
         const normalized = finalizeVegFruitFromTags(coreMeta.tags || [], resolvedCore)
-        if (normalized && normalized.length > 0) {
-          console.log(`🎉 FINAL RESULT (Veg canonical):`)
-          normalized.forEach((item, idx) => {
-            console.log(`  ${idx + 1}. ${item.name}: ${(item.score * 100).toFixed(1)}%`)
-          })
-          console.log('╚═══════════════════════════════════════════╝\n')
-          return normalized
+        const vegFinal = finalizeVegOutput(normalized, coreMeta.tags, 'Core')
+        if (vegFinal && vegFinal.length > 0) {
+          return vegFinal
+        }
+      } else {
+        const cephalopod = resolveCephalopodFromVision(coreMeta.tags, coreMeta.captions)
+        if (cephalopod) {
+          console.log('🥩 Non-veg cephalopod canonical (Core):', cephalopod.name)
+          resolvedCore = [{
+            name: cephalopod.name,
+            score: Math.max(cephalopod.score, resolvedCore[0]?.score ?? cephalopod.score)
+          }]
         }
       }
       
@@ -1387,13 +1588,18 @@ export async function detectIngredients(uriOrBytes: string | Uint8Array): Promis
       // For veg/fruit, apply canonical name resolution from tags
       if (!isNonVeg) {
         const normalized = finalizeVegFruitFromTags(enhancedMeta.tags || [], resolvedEnhanced)
-        if (normalized && normalized.length > 0) {
-          console.log(`🎉 FINAL RESULT (Veg canonical):`)
-          normalized.forEach((item, idx) => {
-            console.log(`  ${idx + 1}. ${item.name}: ${(item.score * 100).toFixed(1)}%`)
-          })
-          console.log('╚═══════════════════════════════════════════╝\n')
-          return normalized
+        const vegFinal = finalizeVegOutput(normalized, enhancedMeta.tags, 'Enhanced')
+        if (vegFinal && vegFinal.length > 0) {
+          return vegFinal
+        }
+      } else {
+        const cephalopod = resolveCephalopodFromVision(enhancedMeta.tags, enhancedMeta.captions)
+        if (cephalopod) {
+          console.log('🥩 Non-veg cephalopod canonical (Enhanced):', cephalopod.name)
+          resolvedEnhanced = [{
+            name: cephalopod.name,
+            score: Math.max(cephalopod.score, resolvedEnhanced[0]?.score ?? cephalopod.score)
+          }]
         }
       }
       
@@ -1411,8 +1617,19 @@ export async function detectIngredients(uriOrBytes: string | Uint8Array): Promis
     // Apply non-veg resolution first
     let resolvedFallback = applyNonVegResolution('Fallback', fallbackResult, fallbackMeta)
     
-    // If still empty, try veg-only tag fallback
+    // If still empty, try non-veg fallback first (cephalopod), then veg-only
     if (resolvedFallback.length === 0) {
+      const cephalopodFallback = resolveCephalopodFromVision(fallbackMeta.tags, fallbackMeta.captions)
+      if (cephalopodFallback) {
+        console.log('🥩 Non-veg cephalopod canonical (Fallback):', cephalopodFallback.name)
+        const finalResult = [{
+          name: cephalopodFallback.name,
+          score: cephalopodFallback.score
+        }]
+        logFinalResult('Fallback Non-Veg', finalResult)
+        return finalResult
+      }
+
       const vegFallback = finalizeVegFruitFromTags(fallbackMeta.tags || [], null)
       if (vegFallback && vegFallback.length > 0) {
         console.log(`🎉 FINAL RESULT (Fallback VEG):`)
@@ -1439,13 +1656,18 @@ export async function detectIngredients(uriOrBytes: string | Uint8Array): Promis
     // For veg/fruit, apply canonical name resolution from tags
     if (!isNonVeg) {
       const normalized = finalizeVegFruitFromTags(fallbackMeta.tags || [], resolvedFallback)
-      if (normalized && normalized.length > 0) {
-        console.log(`🎉 FINAL RESULT (Veg canonical):`)
-        normalized.forEach((item, idx) => {
-          console.log(`  ${idx + 1}. ${item.name}: ${(item.score * 100).toFixed(1)}%`)
-        })
-        console.log('╚═══════════════════════════════════════════╝\n')
-        return normalized
+      const vegFinal = finalizeVegOutput(normalized, fallbackMeta.tags, 'Fallback')
+      if (vegFinal && vegFinal.length > 0) {
+        return vegFinal
+      }
+    } else {
+      const cephalopod = resolveCephalopodFromVision(fallbackMeta.tags, fallbackMeta.captions)
+      if (cephalopod) {
+        console.log('🥩 Non-veg cephalopod canonical (Fallback):', cephalopod.name)
+        resolvedFallback = [{
+          name: cephalopod.name,
+          score: Math.max(cephalopod.score, resolvedFallback[0]?.score ?? cephalopod.score)
+        }]
       }
     }
     
