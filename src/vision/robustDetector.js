@@ -56,7 +56,22 @@ const HEADS = new Set([
     // Vegetables
     'potato', 'onion', 'tomato', 'garlic', 'ginger', 'carrot', 'cabbage',
     'cauliflower', 'cucumber', 'pepper', 'chili', 'spinach', 'broccoli',
-    'beans', 'pea', 'corn'
+    'beans', 'pea', 'corn',
+    // === NEW HEADS ===
+    'okra', 'asparagus', 'lettuce', 'kale', 'celery', 'radish', 'beetroot',
+    'turnip', 'sweet potato', 'yam', 'eggplant', 'zucchini', 'pumpkin',
+    'squash', 'cucumber', 'capsicum', 'chili', 'cauliflower', 'broccoli',
+    'spinach', 'pea', 'corn', 'lentil', 'chickpea', 'bean', 'rice',
+    'wheat', 'oats', 'quinoa', 'barley', 'millet', 'sorghum', 'rye',
+    'buckwheat', 'soybean', 'peanut', 'almond', 'cashew', 'walnut',
+    'pistachio', 'hazelnut', 'pecan', 'macadamia', 'chestnut',
+    'honey', 'sugar', 'salt', 'oil', 'butter', 'yogurt', 'cream',
+    'cheese', 'paneer', 'ghee', 'curd', 'tofu', 'vinegar', 'soy sauce',
+    'chocolate', 'cocoa', 'coffee', 'tea',
+    'dragon fruit', 'avocado', 'pear', 'coconut', 'fig', 'guava',
+    'lychee', 'passion fruit', 'plum', 'raspberry', 'blackberry',
+    'cranberry', 'date', 'grapefruit', 'jackfruit', 'olive',
+    'persimmon', 'star fruit', 'tamarind'
 ]);
 // Thresholds - Core Detection
 const AREA_DOMINANCE_THRESHOLD = 0.40; // 40% coverage for single-item
@@ -289,7 +304,154 @@ const VEGFRUIT_CANONICAL_ALIASES = {
     'almond milk': 'milk',
     'grain milk': 'milk',
     // pasta (keep as is)
-    'pasta': 'pasta'
+    'pasta': 'pasta',
+    // === NEW ADDITIONS ===
+    // 'ladys finger'
+    'okra': 'ladys finger',
+    'gumbo': 'ladys finger',
+    'lady\'s finger': 'ladys finger',
+    'ladys finger': 'ladys finger',
+    'bhindi': 'ladys finger',
+    // Dragon fruit
+    'dragon fruit': 'dragon fruit',
+    'pitaya': 'dragon fruit',
+    'pitahaya': 'dragon fruit',
+    // Honey
+    'honey': 'honey',
+    'honeycomb': 'honey',
+    // Asparagus
+    'asparagus': 'asparagus',
+    // Sugar/Salt/Oil/Butter
+    'sugar': 'sugar',
+    'brown sugar': 'sugar',
+    'salt': 'salt',
+    'sea salt': 'salt',
+    'oil': 'oil',
+    'cooking oil': 'oil',
+    'vegetable oil': 'oil',
+    'olive oil': 'oil',
+    'butter': 'butter',
+    // Dairy extended
+    'yogurt': 'yogurt',
+    'yoghurt': 'yogurt',
+    'curd': 'curd',
+    'cream': 'cream',
+    'sour cream': 'cream',
+    'cheese': 'cheese',
+    'paneer': 'paneer',
+    'ghee': 'ghee',
+    // Tofu
+    'tofu': 'tofu',
+    'bean curd': 'tofu',
+    // Coconut
+    'coconut': 'coconut',
+    // Leafy greens
+    'lettuce': 'lettuce',
+    'romaine lettuce': 'lettuce',
+    'iceberg lettuce': 'lettuce',
+    'kale': 'kale',
+    'spinach': 'spinach',
+    'celery': 'celery',
+    // Root veg
+    'carrot': 'carrot',
+    'radish': 'radish',
+    'beetroot': 'beetroot',
+    'beet': 'beetroot',
+    'turnip': 'turnip',
+    'sweet potato': 'sweet potato',
+    'yam': 'yam',
+    // Squashes
+    'pumpkin': 'pumpkin',
+    'squash': 'squash',
+    'zucchini': 'zucchini',
+    'courgette': 'zucchini',
+    'eggplant': 'eggplant',
+    'aubergine': 'eggplant',
+    'brinjal': 'eggplant',
+    // Cucumber
+    'cucumber': 'cucumber',
+    'gherkin': 'cucumber',
+    'pickle': 'cucumber',
+    // Peppers
+    'pepper': 'capsicum',
+    'bell pepper': 'capsicum',
+    'capsicum': 'capsicum',
+    'chili': 'chili',
+    'chilli': 'chili',
+    'chili pepper': 'chili',
+    'jalapeno': 'chili',
+    'habanero': 'chili',
+    'cayenne': 'chili',
+    'paprika': 'chili',
+    // Cruciferous
+    'broccoli': 'broccoli',
+    'cauliflower': 'cauliflower',
+    'brussels sprouts': 'brussels sprouts',
+    // Legumes
+    'bean': 'beans',
+    'beans': 'beans',
+    'green bean': 'beans',
+    'kidney bean': 'beans',
+    'black bean': 'beans',
+    'soybean': 'soybean',
+    'pea': 'peas',
+    'peas': 'peas',
+    'green pea': 'peas',
+    'chickpea': 'chickpeas',
+    'garbanzo': 'chickpeas',
+    'lentil': 'lentils',
+    'lentils': 'lentils',
+    'dal': 'lentils',
+    // Grains
+    'rice': 'rice',
+    'white rice': 'rice',
+    'brown rice': 'rice',
+    'basmati': 'rice',
+    'wheat': 'wheat',
+    'flour': 'wheat',
+    'oats': 'oats',
+    'oatmeal': 'oats',
+    'corn': 'corn',
+    'maize': 'corn',
+    'sweet corn': 'corn',
+    'popcorn': 'corn',
+    'quinoa': 'quinoa',
+    // Herbs & Spices
+    'basil': 'basil',
+    'coriander': 'coriander',
+    'cilantro': 'coriander',
+    'parsley': 'parsley',
+    'ginger': 'ginger',
+    'turmeric': 'turmeric',
+    'mint': 'mint',
+    'peppermint': 'mint',
+    'rosemary': 'rosemary',
+    'thyme': 'thyme',
+    'oregano': 'oregano',
+    'dill': 'dill',
+    // Nuts
+    'peanut': 'peanut',
+    'groundnut': 'peanut',
+    'almond': 'almond',
+    'cashew': 'cashew',
+    'walnut': 'walnut',
+    'pistachio': 'pistachio',
+    // Other fruits
+    'avocado': 'avocado',
+    'pear': 'pear',
+    'fig': 'fig',
+    'guava': 'guava',
+    'lychee': 'lychee',
+    'litchi': 'lychee',
+    'passion fruit': 'passion fruit',
+    'plum': 'plum',
+    'raspberry': 'raspberry',
+    'blackberry': 'blackberry',
+    'cranberry': 'cranberry',
+    'date': 'date',
+    'grapefruit': 'grapefruit',
+    'jackfruit': 'jackfruit',
+    'olive': 'olive'
 };
 // Canonical ingredient names we actually allow as veg/veg-side outputs
 const BASE_INGREDIENT_KEYS = new Set([
@@ -313,6 +475,25 @@ const BASE_INGREDIENT_KEYS = new Set([
     'lime',
     'peach',
     'apricot',
+    'dragon fruit',
+    'avocado',
+    'pear',
+    'coconut',
+    'fig',
+    'guava',
+    'lychee',
+    'passion fruit',
+    'plum',
+    'raspberry',
+    'blackberry',
+    'cranberry',
+    'date',
+    'grapefruit',
+    'jackfruit',
+    'olive',
+    'persimmon',
+    'star fruit',
+    'tamarind',
     // vegetables / plant ingredients
     'tomato',
     'cabbage',
@@ -325,74 +506,204 @@ const BASE_INGREDIENT_KEYS = new Set([
     'spinach',
     'peas',
     'corn',
+    'okra',
+    'asparagus',
+    'lettuce',
+    'kale',
+    'celery',
+    'radish',
+    'beetroot',
+    'turnip',
+    'sweet potato',
+    'yam',
+    'eggplant',
+    'zucchini',
+    'pumpkin',
+    'squash',
+    'cucumber',
+    'capsicum',
+    'chili',
+    'cauliflower',
+    'brussels sprouts',
+    'artichoke',
+    'leek',
+    'scallion',
+    'ginger',
+    'turmeric',
+    'basil',
+    'coriander',
+    'parsley',
+    'mint',
+    'rosemary',
+    'thyme',
+    'oregano',
+    'dill',
+    'fennel',
+    'lemongrass',
+    'sage',
+    'tarragon',
+    'chives',
+    'bay leaf',
+    // legumes / grains
+    'beans',
+    'lentils',
+    'chickpeas',
+    'rice',
+    'wheat',
+    'oats',
+    'quinoa',
+    'barley',
+    'millet',
+    'sorghum',
+    'rye',
+    'buckwheat',
+    'soybean',
+    'peanut',
+    'almond',
+    'cashew',
+    'walnut',
+    'pistachio',
+    'hazelnut',
+    'pecan',
+    'macadamia',
+    'chestnut',
     // other veg-side ingredients
     'milk',
-    'pasta'
+    'pasta',
+    'honey',
+    'sugar',
+    'salt',
+    'oil',
+    'butter',
+    'yogurt',
+    'cream',
+    'cheese',
+    'paneer',
+    'ghee',
+    'curd',
+    'tofu',
+    'vinegar',
+    'soy sauce',
+    'chocolate',
+    'cocoa',
+    'coffee',
+    'tea'
 ]);
 function normalizeVegFruitTagRaw(name) {
     return (name || '').trim().toLowerCase();
 }
-function chooseCanonicalVegFruitFromTags(azureTags) {
-    if (!azureTags || azureTags.length === 0)
-        return null;
-    const allTags = azureTags.map((t) => {
-        const rawName = t.name ?? t.tagName ?? '';
-        const norm = normalizeVegFruitTagRaw(rawName);
-        const conf = t.confidence ?? t.confidenceScore ?? 0;
-        const canon = VEGFRUIT_CANONICAL_ALIASES[norm] ?? norm;
-        return {
-            raw: rawName,
-            norm,
-            canon,
-            confidence: Math.max(0, Math.min(conf, 1))
-        };
-    });
-    // Drop generic / non-food / non-ingredient labels
-    const filtered = allTags.filter((c) => {
-        if (!c.canon)
-            return false;
+function chooseCanonicalVegFruitFromSignals(tags, objects, captions) {
+    const allCandidates = [];
+
+    // 1. Process Objects (High confidence source)
+    if (objects && objects.length > 0) {
+        objects.forEach(obj => {
+            const rawName = obj.name || '';
+            const norm = normalizeVegFruitTagRaw(rawName);
+            const canon = VEGFRUIT_CANONICAL_ALIASES[norm] ?? norm;
+            allCandidates.push({
+                raw: rawName,
+                norm,
+                canon,
+                confidence: obj.confidence || 0,
+                source: 'object'
+            });
+        });
+    }
+
+    // 2. Process Tags
+    if (tags && tags.length > 0) {
+        tags.forEach(t => {
+            const rawName = t.name ?? t.tagName ?? '';
+            const norm = normalizeVegFruitTagRaw(rawName);
+            const canon = VEGFRUIT_CANONICAL_ALIASES[norm] ?? norm;
+            allCandidates.push({
+                raw: rawName,
+                norm,
+                canon,
+                confidence: t.confidence ?? t.confidenceScore ?? 0,
+                source: 'tag'
+            });
+        });
+    }
+
+    // 3. Process Captions (for context like "jar of honey")
+    if (captions && captions.length > 0) {
+        captions.forEach(c => {
+            const text = (c.text ?? c.content ?? '').toLowerCase();
+            const conf = c.confidence ?? c.confidenceScore ?? 0;
+            // Check for specific keywords in captions that might be missed in tags
+            // e.g. "honey" in "jar of honey"
+            for (const key of BASE_INGREDIENT_KEYS) {
+                // Simple check: if caption contains the ingredient word
+                if (text.includes(key)) {
+                    allCandidates.push({
+                        raw: key,
+                        norm: key,
+                        canon: key,
+                        confidence: conf * 0.8, // Lower confidence for caption extraction
+                        source: 'caption'
+                    });
+                }
+            }
+        });
+    }
+
+    if (allCandidates.length === 0) return null;
+
+    // Filter valid ingredients
+    const filtered = allCandidates.filter(c => {
+        if (!c.canon) return false;
         // Block generic and clearly-non-ingredient tags
-        if (GENERIC_VEGFRUIT_TAGS.has(c.norm))
-            return false;
-        if (GENERIC_VEGFRUIT_TAGS.has(c.canon))
-            return false;
+        if (GENERIC_VEGFRUIT_TAGS.has(c.norm)) return false;
+        if (GENERIC_VEGFRUIT_TAGS.has(c.canon)) return false;
         // Only allow canonical names that are real ingredients
-        if (BASE_INGREDIENT_KEYS.has(c.canon))
-            return true;
+        if (BASE_INGREDIENT_KEYS.has(c.canon)) return true;
         return false;
     });
-    if (filtered.length === 0) {
-        return null;
-    }
+
+    if (filtered.length === 0) return null;
+
     // Special case: if we have watermelon, drop plain "melon"
-    const hasWatermelon = filtered.some((c) => c.canon === 'watermelon');
+    const hasWatermelon = filtered.some(c => c.canon === 'watermelon');
     const finalCandidates = hasWatermelon
-        ? filtered.filter((c) => c.canon !== 'melon')
+        ? filtered.filter(c => c.canon !== 'melon')
         : filtered;
-    if (finalCandidates.length === 0)
-        return null;
-    // Choose best candidate using confidence + specificity
-    let best = finalCandidates[0];
+
+    if (finalCandidates.length === 0) return null;
+
+    // Scoring function
     const score = (c) => {
         const wordCount = c.canon.split(/\s+/).filter(Boolean).length;
         const charCount = c.canon.length;
+        let finalConf = c.confidence;
+
+        // Boost based on source
+        if (c.source === 'object') finalConf += 0.1; // Trust objects more
+        if (c.source === 'tag') finalConf += 0.05;
+
         return {
-            confidence: c.confidence,
+            confidence: finalConf,
             wordCount,
             charCount
         };
     };
+
+    // Find best candidate
+    let best = finalCandidates[0];
     for (const c of finalCandidates.slice(1)) {
         const sb = score(best);
         const sc = score(c);
-        // Prefer higher confidence (with a small margin)
-        if (sc.confidence > sb.confidence + 0.03) {
+
+        // Prefer higher confidence (with margin)
+        if (sc.confidence > sb.confidence + 0.05) {
             best = c;
             continue;
         }
-        if (sb.confidence > sc.confidence + 0.03) {
+        if (sb.confidence > sc.confidence + 0.05) {
             continue;
         }
+
         // Same-ish confidence: prefer more specific (more words)
         if (sc.wordCount > sb.wordCount) {
             best = c;
@@ -401,7 +712,8 @@ function chooseCanonicalVegFruitFromTags(azureTags) {
         if (sb.wordCount > sc.wordCount) {
             continue;
         }
-        // Still tied: prefer longer canonical name (more characters)
+
+        // Still tied: prefer longer canonical name
         if (sc.charCount > sb.charCount) {
             best = c;
             continue;
@@ -409,23 +721,29 @@ function chooseCanonicalVegFruitFromTags(azureTags) {
         if (sb.charCount > sc.charCount) {
             continue;
         }
-        // Final tiny nudge: slightly higher confidence
-        if (sc.confidence > sb.confidence) {
+
+        // Final tie-breaker: raw confidence
+        if (c.confidence > best.confidence) {
             best = c;
         }
     }
+
     // --- Stone-fruit vs apple disambiguation ---
-    const stoneFruitNames = new Set(['peach', 'apricot']);
+    const stoneFruitNames = new Set(['peach', 'apricot', 'plum', 'nectarine']);
     const stoneCandidates = finalCandidates.filter(c => stoneFruitNames.has(c.canon));
     const appleCandidates = finalCandidates.filter(c => c.canon === 'apple');
+
     if (stoneCandidates.length && appleCandidates.length) {
         const bestStone = stoneCandidates.reduce((a, b) => (a.confidence >= b.confidence ? a : b));
         const bestApple = appleCandidates.reduce((a, b) => (a.confidence >= b.confidence ? a : b));
-        if (bestStone.confidence >= 0.8 &&
-            bestApple.confidence <= bestStone.confidence + 0.04) {
+
+        // If stone fruit has decent confidence, prefer it over apple (common misclassification)
+        if (bestStone.confidence >= 0.7 &&
+            bestApple.confidence <= bestStone.confidence + 0.1) {
             return bestStone;
         }
     }
+
     return best;
 }
 function pickSpecificVegTagFromAzureTags(tags) {
@@ -472,9 +790,9 @@ function finalizeVegOutput(normalized, tags, stageLabel) {
     const canonicalVeg = VEGFRUIT_CANONICAL_ALIASES[finalLabel.toLowerCase()] ??
         finalLabel.toLowerCase();
     const result = [{
-            name: canonicalVeg,
-            score: finalScore
-        }];
+        name: canonicalVeg,
+        score: finalScore
+    }];
     console.log(`🎉 FINAL RESULT (Veg canonical - ${stageLabel}):`);
     result.forEach((item, idx) => {
         console.log(`  ${idx + 1}. ${item.name}: ${(item.score * 100).toFixed(1)}%`);
@@ -482,9 +800,9 @@ function finalizeVegOutput(normalized, tags, stageLabel) {
     console.log('╚═══════════════════════════════════════════╝\n');
     return result;
 }
-// Take existing detection (core/enhanced) and "snap" it to a canonical veg name from tags.
-function finalizeVegFruitFromTags(azureTags, existing) {
-    const best = chooseCanonicalVegFruitFromTags(azureTags);
+// Take existing detection (core/enhanced) and "snap" it to a canonical veg name from signals.
+function finalizeVegFruitFromSignals(meta, existing) {
+    const best = chooseCanonicalVegFruitFromSignals(meta.tags, meta.objects, meta.captions);
     if (!best) {
         return existing;
     }
@@ -500,7 +818,8 @@ function finalizeVegFruitFromTags(azureTags, existing) {
 function createDetectionMeta() {
     return {
         tags: [],
-        captions: []
+        captions: [],
+        objects: []
     };
 }
 function applyNonVegResolution(stageLabel, results, meta) {
@@ -515,9 +834,9 @@ function applyNonVegResolution(stageLabel, results, meta) {
         return [existing];
     }
     return [{
-            name: override,
-            score: NON_VEG_DEFAULT_SCORE
-        }];
+        name: override,
+        score: NON_VEG_DEFAULT_SCORE
+    }];
 }
 function normalizeNonVegRaw(name) {
     return (name || '').trim().toLowerCase();
@@ -962,6 +1281,7 @@ async function detectCore(imageBytes, endpoint, apiKey, meta) {
     if (meta) {
         meta.tags = response.tagsResult?.values ? [...response.tagsResult.values] : [];
         meta.captions = [];
+        meta.objects = response.objectsResult?.values ? [...response.objectsResult.values] : [];
     }
     // Extract candidates
     const candidates = extractCandidates(response);
@@ -1130,6 +1450,7 @@ async function detectIngredientsEnhanced(imageBytes, endpoint, apiKey, meta) {
     if (meta) {
         meta.tags = response.tagsResult?.values ? [...response.tagsResult.values] : [];
         meta.captions = response.denseCaptionsResult?.values ? [...response.denseCaptionsResult.values] : [];
+        meta.objects = response.objectsResult?.values ? [...response.objectsResult.values] : [];
     }
     // Extract candidates from this call
     const candidates = extractCandidates(response);
@@ -1172,6 +1493,7 @@ async function fallbackGuard(imageBytes, endpoint, apiKey, meta) {
     if (meta) {
         meta.tags = response.tagsResult?.values ? [...response.tagsResult.values] : [];
         meta.captions = [];
+        meta.objects = []; // No objects in fallback call usually
     }
     // Find highest-confidence non-generic tag ≥0.9
     if (response.tagsResult?.values) {
@@ -1226,12 +1548,19 @@ export async function detectIngredients(uriOrBytes) {
                     'goat', 'turkey', 'duck', 'shrimp', 'prawn', 'lobster', 'crab',
                     'octopus', 'squid'].includes(name);
             });
-            // For veg/fruit, apply canonical name resolution from tags
+            // For veg/fruit, apply canonical name resolution from signals
             if (!isNonVeg) {
-                const normalized = finalizeVegFruitFromTags(coreMeta.tags || [], resolvedCore);
+                const normalized = finalizeVegFruitFromSignals(coreMeta, resolvedCore);
                 const vegFinal = finalizeVegOutput(normalized, coreMeta.tags, 'Core');
                 if (vegFinal && vegFinal.length > 0) {
                     return vegFinal;
+                }
+                // If generic and failed to specialize, discard
+                if (isGenericVegLabel(resolvedCore[0].name)) {
+                    console.log('⚠️  Core result was generic and could not be specialized. Discarding.');
+                } else {
+                    logFinalResult('Core', resolvedCore);
+                    return resolvedCore;
                 }
             }
             else {
@@ -1239,13 +1568,13 @@ export async function detectIngredients(uriOrBytes) {
                 if (cephalopod) {
                     console.log('🥩 Non-veg cephalopod canonical (Core):', cephalopod.name);
                     resolvedCore = [{
-                            name: cephalopod.name,
-                            score: Math.max(cephalopod.score, resolvedCore[0]?.score ?? cephalopod.score)
-                        }];
+                        name: cephalopod.name,
+                        score: Math.max(cephalopod.score, resolvedCore[0]?.score ?? cephalopod.score)
+                    }];
                 }
+                logFinalResult('Core', resolvedCore);
+                return resolvedCore;
             }
-            logFinalResult('Core', resolvedCore);
-            return resolvedCore;
         }
         // ==================== STAGE 2: ENHANCEMENT LAYER ====================
         // Core result empty or low confidence → trigger enhancement
@@ -1262,12 +1591,19 @@ export async function detectIngredients(uriOrBytes) {
                     'goat', 'turkey', 'duck', 'shrimp', 'prawn', 'lobster', 'crab',
                     'octopus', 'squid'].includes(name);
             });
-            // For veg/fruit, apply canonical name resolution from tags
+            // For veg/fruit, apply canonical name resolution from signals
             if (!isNonVeg) {
-                const normalized = finalizeVegFruitFromTags(enhancedMeta.tags || [], resolvedEnhanced);
+                const normalized = finalizeVegFruitFromSignals(enhancedMeta, resolvedEnhanced);
                 const vegFinal = finalizeVegOutput(normalized, enhancedMeta.tags, 'Enhanced');
                 if (vegFinal && vegFinal.length > 0) {
                     return vegFinal;
+                }
+                // If generic and failed to specialize, discard
+                if (isGenericVegLabel(resolvedEnhanced[0].name)) {
+                    console.log('⚠️  Enhanced result was generic and could not be specialized. Discarding.');
+                } else {
+                    logFinalResult('Enhanced', resolvedEnhanced);
+                    return resolvedEnhanced;
                 }
             }
             else {
@@ -1275,13 +1611,13 @@ export async function detectIngredients(uriOrBytes) {
                 if (cephalopod) {
                     console.log('🥩 Non-veg cephalopod canonical (Enhanced):', cephalopod.name);
                     resolvedEnhanced = [{
-                            name: cephalopod.name,
-                            score: Math.max(cephalopod.score, resolvedEnhanced[0]?.score ?? cephalopod.score)
-                        }];
+                        name: cephalopod.name,
+                        score: Math.max(cephalopod.score, resolvedEnhanced[0]?.score ?? cephalopod.score)
+                    }];
                 }
+                logFinalResult('Enhanced', resolvedEnhanced);
+                return resolvedEnhanced;
             }
-            logFinalResult('Enhanced', resolvedEnhanced);
-            return resolvedEnhanced;
         }
         // ==================== STAGE 3: FALLBACK GUARD ====================
         // Both core and enhancement failed → last resort
@@ -1296,13 +1632,13 @@ export async function detectIngredients(uriOrBytes) {
             if (cephalopodFallback) {
                 console.log('🥩 Non-veg cephalopod canonical (Fallback):', cephalopodFallback.name);
                 const finalResult = [{
-                        name: cephalopodFallback.name,
-                        score: cephalopodFallback.score
-                    }];
+                    name: cephalopodFallback.name,
+                    score: cephalopodFallback.score
+                }];
                 logFinalResult('Fallback Non-Veg', finalResult);
                 return finalResult;
             }
-            const vegFallback = finalizeVegFruitFromTags(fallbackMeta.tags || [], null);
+            const vegFallback = finalizeVegFruitFromSignals(fallbackMeta, null);
             if (vegFallback && vegFallback.length > 0) {
                 console.log(`🎉 FINAL RESULT (Fallback VEG):`);
                 vegFallback.forEach((item, idx) => {
@@ -1322,12 +1658,19 @@ export async function detectIngredients(uriOrBytes) {
                 'goat', 'turkey', 'duck', 'shrimp', 'prawn', 'lobster', 'crab',
                 'octopus', 'squid'].includes(name);
         });
-        // For veg/fruit, apply canonical name resolution from tags
+        // For veg/fruit, apply canonical name resolution from signals
         if (!isNonVeg) {
-            const normalized = finalizeVegFruitFromTags(fallbackMeta.tags || [], resolvedFallback);
+            const normalized = finalizeVegFruitFromSignals(fallbackMeta, resolvedFallback);
             const vegFinal = finalizeVegOutput(normalized, fallbackMeta.tags, 'Fallback');
             if (vegFinal && vegFinal.length > 0) {
                 return vegFinal;
+            }
+            // If generic and failed to specialize, discard
+            if (isGenericVegLabel(resolvedFallback[0].name)) {
+                console.log('⚠️  Fallback result was generic and could not be specialized. Discarding.');
+                console.log('\n❌ NO INGREDIENTS DETECTED');
+                console.log('╚═══════════════════════════════════════════╝\n');
+                return [];
             }
         }
         else {
@@ -1335,9 +1678,9 @@ export async function detectIngredients(uriOrBytes) {
             if (cephalopod) {
                 console.log('🥩 Non-veg cephalopod canonical (Fallback):', cephalopod.name);
                 resolvedFallback = [{
-                        name: cephalopod.name,
-                        score: Math.max(cephalopod.score, resolvedFallback[0]?.score ?? cephalopod.score)
-                    }];
+                    name: cephalopod.name,
+                    score: Math.max(cephalopod.score, resolvedFallback[0]?.score ?? cephalopod.score)
+                }];
             }
         }
         logFinalResult('Fallback', resolvedFallback);
