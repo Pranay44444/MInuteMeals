@@ -18,13 +18,13 @@ jest.mock('expo-image-manipulator', () => ({
   Action: {},
 }));
 
-// Mock expo-file-system
+// Mock expo-file-system/legacy
 jest.mock('expo-file-system/legacy', () => ({
   readAsStringAsync: jest.fn(() => Promise.resolve('base64encodedstring')),
   EncodingType: {
     Base64: 'base64',
   },
-}));
+}), { virtual: true });
 
 // Mock expo-image-picker
 jest.mock('expo-image-picker', () => ({
@@ -87,6 +87,3 @@ global.console = {
 
 // Mock atob for base64 decoding
 global.atob = jest.fn((str) => Buffer.from(str, 'base64').toString('binary'));
-
-
-

@@ -1,14 +1,11 @@
-type AzureTag = { name: string; confidence: number }
-type AzureCaption = { text: string; confidence: number }
-
-const toWords = (s: string) =>
+const toWords = (s) =>
   s
     .toLowerCase()
     .replace(/[^a-z\s]/g, ' ')
     .split(/\s+/)
     .filter(w => w.length >= 3)
 
-const singular = (w: string): string => {
+const singular = (w) => {
   if (w === 'tomatoes') return 'tomato'
   if (w === 'potatoes') return 'potato'
   if (w.endsWith('ses') || w.endsWith('xes') || w.endsWith('ches') || w.endsWith('shes')) {
@@ -45,10 +42,10 @@ const GENERIC = new Set([
 ])
 
 export function resolveNonVeg(
-  finalCandidates: string[],
-  azureTags: AzureTag[],
-  azureCaptions: AzureCaption[]
-): string | null {
+  finalCandidates,
+  azureTags,
+  azureCaptions
+) {
   const tagWords = azureTags.flatMap(t => toWords(t.name).map(singular))
   const capWords = azureCaptions.flatMap(c => toWords(c.text).map(singular))
   const allWords = [...tagWords, ...capWords]
@@ -77,9 +74,9 @@ export function resolveNonVeg(
 
   const isMeatFoodScene = hasMeatWord || hasRawMeatCaption || (hasFoodWord && hasAnimalFat)
 
-  const allTokens = new Map<string, { inFinal: boolean; inTag: boolean; inCap: boolean }>()
+  const allTokens = new Map()
 
-  const addToken = (token: string, from: 'final' | 'tag' | 'cap') => {
+  const addToken = (token, from) => {
     token = singular(token)
     if (!token || GENERIC.has(token)) return
     const existing = allTokens.get(token) ?? { inFinal: false, inTag: false, inCap: false }
@@ -95,7 +92,7 @@ export function resolveNonVeg(
   tagWords.forEach(w => addToken(w, 'tag'))
   capWords.forEach(w => addToken(w, 'cap'))
 
-  const specifics: { token: string; score: number }[] = []
+  const specifics = []
   for (const [token, flags] of allTokens.entries()) {
     const { inFinal, inTag, inCap } = flags
     let score = 0
@@ -120,4 +117,3 @@ export function resolveNonVeg(
   // Non-meat scenes (e.g., human skin/hand with "flesh") → no ingredient
   return null
 }
-
