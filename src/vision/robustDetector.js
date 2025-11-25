@@ -81,7 +81,7 @@ const CONFIDENCE_TOLERANCE = 0.15; // Within 15% for multi-item
 const SCORE_MIN = 0.52; // Min score to keep (lowered from 0.58 for better detection)
 const SCORE_DOMINANCE = 0.82; // Score for single-item dominance
 const SCORE_RATIO = 1.5; // Ratio for dominance filter
-const MAX_RESULTS = 3;
+const MAX_RESULTS = 6;
 // Thresholds - Enhancement Layer
 const CORE_CONFIDENCE_THRESHOLD = 0.55; // If core result ≥ this, accept as-is (lowered from 0.6)
 const ENHANCED_AREA_THRESHOLD = 0.30; // 30% for enhanced area dominance (lowered from 0.35)
@@ -598,14 +598,17 @@ function chooseCanonicalVegFruitFromSignals(tags, objects, captions) {
     // 1. Process Objects (High confidence source)
     if (objects && objects.length > 0) {
         objects.forEach(obj => {
-            const rawName = obj.name || '';
+            // Azure Vision objects have tags array, not direct name property
+            const rawName = (obj.tags && obj.tags.length > 0) ? obj.tags[0].name : (obj.name || '');
+            const confidence = (obj.tags && obj.tags.length > 0) ? obj.tags[0].confidence : (obj.confidence || 0);
+
             const norm = normalizeVegFruitTagRaw(rawName);
             const canon = VEGFRUIT_CANONICAL_ALIASES[norm] ?? norm;
             allCandidates.push({
                 raw: rawName,
                 norm,
                 canon,
-                confidence: obj.confidence || 0,
+                confidence: confidence,
                 source: 'object'
             });
         });
@@ -666,86 +669,190 @@ function chooseCanonicalVegFruitFromSignals(tags, objects, captions) {
 
     // Special case: if we have watermelon, drop plain "melon"
     const hasWatermelon = filtered.some(c => c.canon === 'watermelon');
-    const finalCandidates = hasWatermelon
+    const candidates = hasWatermelon
         ? filtered.filter(c => c.canon !== 'melon')
         : filtered;
 
-    if (finalCandidates.length === 0) return null;
+    if (candidates.length === 0) return null;
 
-    // Scoring function
-    const score = (c) => {
-        const wordCount = c.canon.split(/\s+/).filter(Boolean).length;
-        const charCount = c.canon.length;
-        let finalConf = c.confidence;
+    // Group by canonical name and find max score for each
+    const grouped = new Map();
+    candidates.forEach(c => {
+        let score = c.confidence;
 
-        // Boost based on source
-        if (c.source === 'object') finalConf += 0.1; // Trust objects more
-        if (c.source === 'tag') finalConf += 0.05;
+        // Boost based on source - but be more conservative for low-confidence objects
+        if (c.source === 'object') {
+            // Only apply full boost for objects with >0.65 confidence (reduces false positives)
+            if (c.confidence >= 0.65) {
+                score += 0.25;
+            } else {
+                score += 0.10; // Weaker boost for uncertain objects
+            }
+        }
+        if (c.source === 'tag') score += 0.05;
 
-        return {
-            confidence: finalConf,
-            wordCount,
-            charCount
+        if (!grouped.has(c.canon)) {
+            grouped.set(c.canon, { ...c, score, hasObjectSource: c.source === 'object' });
+        } else {
+            const existing = grouped.get(c.canon);
+            const newHasObject = existing.hasObjectSource || c.source === 'object';
+            if (score > existing.score) {
+                grouped.set(c.canon, { ...c, score, hasObjectSource: newHasObject });
+            } else {
+                existing.hasObjectSource = newHasObject;
+            }
+        }
+    });
+
+    // Convert to array and sort by score
+    const uniqueCandidates = Array.from(grouped.values())
+        .sort((a, b) => b.score - a.score);
+
+    if (uniqueCandidates.length === 0) return null;
+
+    // --- DUAL-MODE DETECTION LOGIC ---
+    // Analyze object detections to determine if this is single or multi-item scenario
+    const distinctObjectTypes = new Set();
+    const objectCandidates = uniqueCandidates.filter(c => c.hasObjectSource);
+
+    objectCandidates.forEach(c => {
+        // Count distinct canonical ingredient names from objects
+        if (c.canon && !GENERIC_VEGFRUIT_TAGS.has(c.canon)) {
+            distinctObjectTypes.add(c.canon);
+        }
+    });
+
+    const isMultiItemScenario = distinctObjectTypes.size >= 2;
+    const topScore = uniqueCandidates[0].score;
+
+    console.log(`📊 Detection Mode: ${isMultiItemScenario ? 'MULTI-ITEM' : 'SINGLE-ITEM'} (${distinctObjectTypes.size} distinct objects)`);
+
+    let finalResults = uniqueCandidates;
+    let filteredResults;
+
+    if (isMultiItemScenario) {
+        // MULTI-ITEM MODE: Permissive threshold, LIMITED family filtering
+        // Preserve all distinct items EXCEPT clear tag-only noise from same family
+
+        const MULTI_THRESHOLD = Math.max(0.5, topScore - 0.4);
+        filteredResults = finalResults.filter(c => c.score >= MULTI_THRESHOLD);
+
+        // Light Citrus Filtering: If we have an object-backed citrus, drop tag-only citrus siblings
+        // This prevents "Orange + Grapefruit" false positives while keeping "Orange + Lemon" if both are objects
+        const CITRUS_FAMILY = new Set(['orange', 'grapefruit', 'lemon', 'lime', 'pomelo', 'citron', 'tangerine', 'clementine', 'mandarin']);
+        const citrusInResults = filteredResults.filter(c => CITRUS_FAMILY.has(c.canon));
+
+        if (citrusInResults.length > 1) {
+            const objectBackedCitrus = citrusInResults.filter(c => c.hasObjectSource);
+            const tagOnlyCitrus = citrusInResults.filter(c => !c.hasObjectSource);
+
+            // If we have object-backed citrus AND tag-only citrus, drop the tag-only ones
+            if (objectBackedCitrus.length > 0 && tagOnlyCitrus.length > 0) {
+                const keepNames = new Set(objectBackedCitrus.map(c => c.canon));
+                filteredResults = filteredResults.filter(c => !CITRUS_FAMILY.has(c.canon) || keepNames.has(c.canon));
+                console.log(`🍊 Multi-item citrus filter: Kept object-backed [${Array.from(keepNames).join(', ')}], dropped tag-only citrus`);
+            }
+        }
+
+        console.log(`🔓 Multi-item mode: threshold=${MULTI_THRESHOLD.toFixed(2)} (permissive, object-based citrus filter)`);
+
+    } else {
+        // SINGLE-ITEM MODE: Apply family dominance to reduce confusion
+
+        // --- Family Dominance Logic (SINGLE-ITEM MODE ONLY) ---
+        const FAMILIES = {
+            citrus: new Set(['orange', 'grapefruit', 'lemon', 'lime', 'pomelo', 'citron', 'tangerine', 'clementine', 'mandarin']),
+            peppers: new Set(['chili', 'capsicum', 'jalapeno', 'habanero', 'cayenne', 'paprika']),
+            stone: new Set(['peach', 'apricot', 'plum', 'nectarine', 'cherry']),
+            allium: new Set(['garlic', 'onion', 'shallot', 'scallion', 'leek'])
         };
-    };
 
-    // Find best candidate
-    let best = finalCandidates[0];
-    for (const c of finalCandidates.slice(1)) {
-        const sb = score(best);
-        const sc = score(c);
-
-        // Prefer higher confidence (with margin)
-        if (sc.confidence > sb.confidence + 0.05) {
-            best = c;
-            continue;
-        }
-        if (sb.confidence > sc.confidence + 0.05) {
-            continue;
-        }
-
-        // Same-ish confidence: prefer more specific (more words)
-        if (sc.wordCount > sb.wordCount) {
-            best = c;
-            continue;
-        }
-        if (sb.wordCount > sc.wordCount) {
-            continue;
+        // 1. Citrus Family
+        const citrusMembers = finalResults.filter(c => FAMILIES.citrus.has(c.canon));
+        if (citrusMembers.length > 1) {
+            const objectBacked = citrusMembers.filter(c => c.hasObjectSource);
+            if (objectBacked.length > 0 && objectBacked.length < citrusMembers.length) {
+                const keepNames = new Set(objectBacked.map(c => c.canon));
+                finalResults = finalResults.filter(c => !FAMILIES.citrus.has(c.canon) || keepNames.has(c.canon));
+                console.log(`🍊 Citrus dominance: Kept [${Array.from(keepNames).join(', ')}]`);
+            } else if (objectBacked.length === 0) {
+                const topCitrus = citrusMembers[0];
+                finalResults = finalResults.filter(c => !FAMILIES.citrus.has(c.canon) || c.canon === topCitrus.canon);
+                console.log(`🍊 Citrus dominance: Kept "${topCitrus.canon}"`);
+            }
         }
 
-        // Still tied: prefer longer canonical name
-        if (sc.charCount > sb.charCount) {
-            best = c;
-            continue;
-        }
-        if (sb.charCount > sc.charCount) {
-            continue;
+        // 2. Stone Fruit Family
+        const stoneMembers = finalResults.filter(c => FAMILIES.stone.has(c.canon));
+        const hasApple = finalResults.some(c => c.canon === 'apple');
+
+        if (stoneMembers.length > 0 && hasApple) {
+            const bestStone = stoneMembers[0];
+            const bestApple = finalResults.find(c => c.canon === 'apple');
+            if (bestStone.score >= bestApple.score - 0.15) {
+                finalResults = finalResults.filter(c => c.canon !== 'apple');
+                console.log(`🍑 Stone fruit vs Apple: Kept stone fruit`);
+            }
         }
 
-        // Final tie-breaker: raw confidence
-        if (c.confidence > best.confidence) {
-            best = c;
+        if (stoneMembers.length > 1) {
+            const objectBackedStone = stoneMembers.filter(c => c.hasObjectSource);
+            if (objectBackedStone.length > 1) {
+                const keepNames = new Set(objectBackedStone.map(c => c.canon));
+                finalResults = finalResults.filter(c => !FAMILIES.stone.has(c.canon) || keepNames.has(c.canon));
+                console.log(`🍑 Stone fruit collapse: Kept [${Array.from(keepNames).join(', ')}]`);
+            } else {
+                const bestStone = stoneMembers[0];
+                finalResults = finalResults.filter(c => !FAMILIES.stone.has(c.canon) || c.canon === bestStone.canon);
+                console.log(`🍑 Stone fruit collapse: Kept "${bestStone.canon}"`);
+            }
         }
+
+        // 3. Allium Family
+        const alliumMembers = finalResults.filter(c => FAMILIES.allium.has(c.canon));
+        if (alliumMembers.length > 1) {
+            const topAllium = alliumMembers[0];
+            const secondAllium = alliumMembers[1];
+            if (topAllium.score >= secondAllium.score + 0.2) {
+                finalResults = finalResults.filter(c => !FAMILIES.allium.has(c.canon) || c.canon === topAllium.canon);
+                console.log(`🧄 Allium dominance: Kept "${topAllium.canon}"`);
+            }
+        }
+
+        // Apply strict threshold
+        const SINGLE_THRESHOLD = Math.max(0.5, topScore - 0.2);
+        filteredResults = finalResults.filter(c => c.score >= SINGLE_THRESHOLD);
+
+        // Cross-confirmation: If top is very strong TAG (>0.95), suppress weak objects
+        if (filteredResults.length > 1) {
+            const top = filteredResults[0];
+            const isTopStrongTag = !top.hasObjectSource && top.score > 0.95;
+
+            if (isTopStrongTag) {
+                const beforeCount = filteredResults.length;
+                filteredResults = filteredResults.filter(c =>
+                    c.canon === top.canon ||
+                    c.score >= top.score - 0.15 ||
+                    (!c.hasObjectSource && c.score > 0.8)
+                );
+
+                if (filteredResults.length < beforeCount) {
+                    console.log(`🔍 Single-item cross-confirmation: "${top.canon}" suppressed weak detections`);
+                }
+            }
+        }
+
+        console.log(`🔒 Single-item mode: threshold=${SINGLE_THRESHOLD.toFixed(2)} (strict, family-aware)`);
     }
 
-    // --- Stone-fruit vs apple disambiguation ---
-    const stoneFruitNames = new Set(['peach', 'apricot', 'plum', 'nectarine']);
-    const stoneCandidates = finalCandidates.filter(c => stoneFruitNames.has(c.canon));
-    const appleCandidates = finalCandidates.filter(c => c.canon === 'apple');
+    const finalFiltered = filteredResults;
 
-    if (stoneCandidates.length && appleCandidates.length) {
-        const bestStone = stoneCandidates.reduce((a, b) => (a.confidence >= b.confidence ? a : b));
-        const bestApple = appleCandidates.reduce((a, b) => (a.confidence >= b.confidence ? a : b));
+    // Debug log for candidates
+    console.log(`🔍 Veg Candidates: ${finalFiltered.map(c => `${c.canon}(${c.score.toFixed(2)}|${c.source})`).join(', ')}`);
 
-        // If stone fruit has decent confidence, prefer it over apple (common misclassification)
-        if (bestStone.confidence >= 0.7 &&
-            bestApple.confidence <= bestStone.confidence + 0.1) {
-            return bestStone;
-        }
-    }
-
-    return best;
+    return finalFiltered;
 }
+
 function pickSpecificVegTagFromAzureTags(tags) {
     if (!tags || tags.length === 0)
         return null;
@@ -758,11 +865,29 @@ function pickSpecificVegTagFromAzureTags(tags) {
         return null;
     return best;
 }
+
 function finalizeVegOutput(normalized, tags, stageLabel) {
     if (!normalized || normalized.length === 0)
         return null;
+
+    // If we have multiple results, check if any are generic
+    // If we have at least one specific result, we can drop the generics
+    const specific = normalized.filter(n => !isGenericVegLabel(n.name));
+
+    if (specific.length > 0) {
+        // We have specific ingredients! Return them.
+        console.log(`🎉 FINAL RESULT (Veg canonical - ${stageLabel}):`);
+        specific.forEach((item, idx) => {
+            console.log(`  ${idx + 1}. ${item.name}: ${(item.score * 100).toFixed(1)}%`);
+        });
+        console.log('╚═══════════════════════════════════════════╝\n');
+        return specific;
+    }
+
+    // If all are generic (e.g. "vegetable"), try to salvage the best one
     let finalLabel = normalized[0].name;
     let finalScore = normalized[0].score;
+
     if (isGenericVegLabel(finalLabel)) {
         if (tags && tags.length > 0) {
             const salvage = pickSpecificVegTagFromAzureTags(tags);
@@ -783,16 +908,19 @@ function finalizeVegOutput(normalized, tags, stageLabel) {
             return null;
         }
     }
+
     if (isGenericVegLabel(finalLabel)) {
         console.log(`🍃 Still generic veg label "${finalLabel}" after salvage – treating as no ingredient`);
         return null;
     }
+
     const canonicalVeg = VEGFRUIT_CANONICAL_ALIASES[finalLabel.toLowerCase()] ??
         finalLabel.toLowerCase();
     const result = [{
         name: canonicalVeg,
         score: finalScore
     }];
+
     console.log(`🎉 FINAL RESULT (Veg canonical - ${stageLabel}):`);
     result.forEach((item, idx) => {
         console.log(`  ${idx + 1}. ${item.name}: ${(item.score * 100).toFixed(1)}%`);
@@ -800,20 +928,20 @@ function finalizeVegOutput(normalized, tags, stageLabel) {
     console.log('╚═══════════════════════════════════════════╝\n');
     return result;
 }
+
 // Take existing detection (core/enhanced) and "snap" it to a canonical veg name from signals.
 function finalizeVegFruitFromSignals(meta, existing) {
-    const best = chooseCanonicalVegFruitFromSignals(meta.tags, meta.objects, meta.captions);
-    if (!best) {
+    const candidates = chooseCanonicalVegFruitFromSignals(meta.tags, meta.objects, meta.captions);
+
+    if (!candidates || candidates.length === 0) {
         return existing;
     }
-    const base = (existing && existing[0]) || {};
-    return [
-        {
-            ...base,
-            name: best.canon,
-            score: Math.max(base.score ?? 0, best.confidence)
-        }
-    ];
+
+    // Map candidates to result format
+    return candidates.map(c => ({
+        name: c.canon,
+        score: c.score
+    }));
 }
 function createDetectionMeta() {
     return {
@@ -1262,10 +1390,17 @@ function applyDominanceFilter(scored) {
     if (scored.length === 0)
         return [];
     // Dominance filter: if top ≥0.82 and ≥1.5× next, return top only
+    // BUT if the second item is also high confidence (> 0.75), keep it!
     if (scored[0].score >= SCORE_DOMINANCE &&
         scored[0].score >= (scored[1]?.score ?? 0) * SCORE_RATIO) {
-        console.log(`🎯 Dominance: "${scored[0].name}" (${scored[0].score.toFixed(2)}) >> others`);
-        return [scored[0]];
+
+        // Exception: if second item is strong enough, don't suppress it
+        if (scored[1] && scored[1].score >= 0.75) {
+            console.log(`🎯 Dominance check: "${scored[0].name}" is dominant but "${scored[1].name}" is strong (${scored[1].score.toFixed(2)}) - keeping both.`);
+        } else {
+            console.log(`🎯 Dominance: "${scored[0].name}" (${scored[0].score.toFixed(2)}) >> others`);
+            return [scored[0]];
+        }
     }
     // Return top MAX_RESULTS
     return scored.slice(0, MAX_RESULTS);
