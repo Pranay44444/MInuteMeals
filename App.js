@@ -1,55 +1,55 @@
 import React from 'react'
-import {NavigationContainer} from '@react-navigation/native'
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs'
-import {createStackNavigator} from '@react-navigation/stack'
-import {Ionicons} from '@expo/vector-icons'
-import {StoreProvider} from './src/services/store'
+import { NavigationContainer } from '@react-navigation/native'
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
+import { createStackNavigator } from '@react-navigation/stack'
+import { Ionicons } from '@expo/vector-icons'
+import { StoreProvider } from './src/services/store'
 import Matches from './src/screens/Matches'
 import Pantry from './src/screens/Pantry'
 import ShoppingList from './src/screens/ShoppingList'
 import Favorites from './src/screens/Favorites'
 import RecipeDetail from './src/screens/RecipeDetail'
-import {PantryIcon} from './src/components/PantryIcon'
+import { PantryIcon } from './src/components/PantryIcon'
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
 
-function MatchesNav(){
+function MatchesNav() {
   return (
-    <Stack.Navigator screenOptions={{headerShown: false}}>
-      <Stack.Screen name="MatchesMain" component={Matches}/>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MatchesMain" component={Matches} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetail} />
     </Stack.Navigator>
   )
 }
-function PantryNav(){
+function PantryNav() {
   return (
-    <Stack.Navigator screenOptions={{headerShown: false}}>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PantryMain" component={Pantry} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetail} />
     </Stack.Navigator>
   )
 }
 
-function ShoppingNav(){
+function ShoppingNav() {
   return (
-    <Stack.Navigator screenOptions={{headerShown: false}}>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ShoppingMain" component={ShoppingList} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetail} />
     </Stack.Navigator>
   )
 }
 
-function FavoritesNav(){
+function FavoritesNav() {
   return (
-    <Stack.Navigator screenOptions={{headerShown: false}}>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="FavoritesMain" component={Favorites} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetail} />
     </Stack.Navigator>
   )
 }
 
-function MainTabs(){
+function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -66,7 +66,7 @@ function MainTabs(){
         name="Matches"
         component={MatchesNav}
         options={{
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="home" size={24} color={color} />
           ),
         }}
@@ -75,7 +75,7 @@ function MainTabs(){
         name="Pantry"
         component={PantryNav}
         options={{
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <PantryIcon color={color} size={24} />
           ),
         }}
@@ -84,7 +84,7 @@ function MainTabs(){
         name="Shopping"
         component={ShoppingNav}
         options={{
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="list" size={24} color={color} />
           ),
         }}
@@ -93,7 +93,7 @@ function MainTabs(){
         name="Favorites"
         component={FavoritesNav}
         options={{
-          tabBarIcon: ({color}) => (
+          tabBarIcon: ({ color }) => (
             <Ionicons name="heart" size={24} color={color} />
           ),
         }}
@@ -102,7 +102,7 @@ function MainTabs(){
   )
 }
 
-export default function App(){
+export default function App() {
   return (
     <StoreProvider>
       <NavigationContainer>

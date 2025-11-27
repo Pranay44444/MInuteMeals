@@ -1,116 +1,110 @@
-import React,{useEffect,useState,useCallback} from 'react'
-import {View,Text,ScrollView,StyleSheet,StatusBar,TouchableOpacity,Alert,Share} from 'react-native'
-import {SafeAreaView} from 'react-native-safe-area-context'
-import {useNavigation,useRoute} from '@react-navigation/native'
-import {Ionicons} from '@expo/vector-icons'
-import {useStore,addToFavorites,removeFromFavorites,addToShoppingList,showSnackbar,hideSnackbar} from '../services/store'
-import {Badge} from '../components/Badge'
-import {ListItem} from '../components/ListItem'
-import {Snackbar} from '../components/Snackbar'
-import {getRecipe} from '../services/recipes'
-import {checkRecipeMatch,makePantrySet,getMissingForShopping} from '../services/recipes'
+import React, { useEffect, useState, useCallback } from 'react'
+import { View, Text, ScrollView, StyleSheet, StatusBar, TouchableOpacity, Alert, Share } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { useNavigation, useRoute } from '@react-navigation/native'
+import { Ionicons } from '@expo/vector-icons'
+import { useStore, addToFavorites, removeFromFavorites, addToShoppingList, showSnackbar, hideSnackbar } from '../services/store'
+import { Badge } from '../components/Badge'
+import { ListItem } from '../components/ListItem'
+import { Snackbar } from '../components/Snackbar'
+import { getRecipe } from '../services/recipes'
+import { checkRecipeMatch, makePantrySet, getMissingForShopping } from '../services/recipes'
 
-export default function RecipeDetail(){
+export default function RecipeDetail() {
   const navigation = useNavigation()
   const route = useRoute()
-  const {id} = route.params
-  const {state,dispatch} = useStore()
-  const [recipe,setRecipe] = useState(null)
-  const [match,setMatch] = useState(null)
-  const [loading,setLoading] = useState(true)
+  const { id } = route.params
+  const { state, dispatch } = useStore()
+  const [recipe, setRecipe] = useState(null)
+  const [match, setMatch] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const loadRecipe = useCallback(async ()=>{
+  const fetchRecipeDetails = useCallback(async () => {
     if (!id) return
     setLoading(true)
-    try{
-      if (state.currentRecipe && state.currentRecipe.recipe.id === id){
+    try {
+      if (state.currentRecipe && state.currentRecipe.recipe.id === id) {
         setRecipe(state.currentRecipe.recipe)
         setMatch(state.currentRecipe.match)
-      }
-      else{
+      } else {
         const fetchedRecipe = await getRecipe(id)
-        if (fetchedRecipe){
+        if (fetchedRecipe) {
           setRecipe(fetchedRecipe)
           const pantrySet = makePantrySet(state.pantry.items)
-          const recipeMatch = checkRecipeMatch(fetchedRecipe,pantrySet)
+          const recipeMatch = checkRecipeMatch(fetchedRecipe, pantrySet)
           setMatch(recipeMatch)
         }
       }
-    }
-    catch(error){
-      console.error('Error loading recipe:',error)
-      Alert.alert('Error','Failed to load recipe details.')
-    }
-    finally{
+    } catch (error) {
+      // Error handling silently or with user alert only
+      Alert.alert('Error', 'Failed to load recipe details.')
+    } finally {
       setLoading(false)
     }
-  },[id,state.currentRecipe,state.pantry.items])
+  }, [id, state.currentRecipe, state.pantry.items])
 
-  useEffect(()=>{
-    loadRecipe()
-  },[loadRecipe])
+  useEffect(() => {
+    fetchRecipeDetails()
+  }, [fetchRecipeDetails])
 
-  const clickHeart = useCallback(()=>{
-    if (!recipe){
-      return
-    }
-    if (state.favorites.includes(recipe.id)){
+  const toggleFavorite = useCallback(() => {
+    if (!recipe) return
+
+    if (state.favorites.includes(recipe.id)) {
       dispatch(removeFromFavorites(recipe.id))
-    }
-    else{
+    } else {
       dispatch(addToFavorites(recipe.id))
     }
-  },[recipe,state.favorites,dispatch])
+  }, [recipe, state.favorites, dispatch])
 
-  const clickAddMissing = useCallback(()=>{
-    if (!match || !match.missingIngredients || match.missingIngredients.length === 0){
+  const handleAddMissingIngredients = useCallback(() => {
+    if (!match || !match.missingIngredients || match.missingIngredients.length === 0) {
       dispatch(showSnackbar(
-        'You have all the ingredients needed for this recipe!',null,null
+        'You have all the ingredients needed for this recipe!', null, null
       ))
       return
     }
-    const shoppingItems = getMissingForShopping(match,recipe.title)
+    const shoppingItems = getMissingForShopping(match, recipe.title)
     dispatch(addToShoppingList(shoppingItems))
     dispatch(showSnackbar(
       `Added ${shoppingItems.length} ingredients to shopping list`,
       'VIEW LIST',
-      ()=> navigation.navigate('Shopping')
+      () => navigation.navigate('Shopping')
     ))
-  },[match,recipe,dispatch])
+  }, [match, recipe, dispatch])
 
-  const clickBack = useCallback(()=>{
+  const handleBackPress = useCallback(() => {
     navigation.goBack()
-  },[navigation])
-  const clickShare = useCallback(async ()=>{
-    if (!recipe){
-      return
-    }
-    try{
-      const message = `Check out this recipe: ${recipe.title}\n\nIngredients:\n${recipe.ingredients.map(ing => `• ${ing.qty} ${ing.unit} ${ing.name}`).join('\n')}\n\nShared from MinuteMeals`
-      await Share.share({message,title: recipe.title,})
-    }
-    catch(error){
-      console.error('Error sharing recipe:',error)
-    }
-  },[recipe])
+  }, [navigation])
 
-  if (loading){
+  const handleSharePress = useCallback(async () => {
+    if (!recipe) return
+
+    try {
+      const message = `Check out this recipe: ${recipe.title}\n\nIngredients:\n${recipe.ingredients.map(ing => `• ${ing.qty} ${ing.unit} ${ing.name}`).join('\n')}\n\nShared from MinuteMeals`
+      await Share.share({ message, title: recipe.title })
+    } catch (error) {
+      // Share failed silently
+    }
+  }, [recipe])
+
+  if (loading) {
     return (
-      <SafeAreaView style={styles.main}>
-        <StatusBar barStyle="dark-content" backgroundColor="white"/>
-        <View style={styles.loadBox}>
-          <Text style={styles.loadText}>Loading recipe...</Text>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="white" />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading recipe...</Text>
         </View>
       </SafeAreaView>
     )
   }
-  if (!recipe){
+  if (!recipe) {
     return (
-      <SafeAreaView style={styles.main}>
-        <StatusBar barStyle="dark-content" backgroundColor="white"/>
-        <View style={styles.errorBox}>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="white" />
+        <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Recipe not found</Text>
-          <TouchableOpacity style={styles.backBtn} onPress={clickBack}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
             <Text style={styles.backText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -119,7 +113,8 @@ export default function RecipeDetail(){
   }
 
   const isFavorite = state.favorites.includes(recipe.id)
-  const showIngredient = ({item,index})=>(
+
+  const renderIngredient = ({ item, index }) => (
     <ListItem
       key={index}
       title={item.name}
@@ -127,39 +122,39 @@ export default function RecipeDetail(){
       leftIcon={
         <View style={[
           styles.ingredientDot,
-          {backgroundColor: match?.matchedIngredients.includes(item) ? '#28a745' : '#ffc107'}
-        ]}/>
+          { backgroundColor: match?.matchedIngredients.includes(item) ? '#28a745' : '#ffc107' }
+        ]} />
       }
       style={styles.ingredientItem}
     />
   )
 
-  const showStep = ({item,index})=>(
-    <View key={index} style={styles.stepBox}>
-      <View style={styles.stepNum}>
-        <Text style={styles.stepNumText}>{index+1}</Text>
+  const renderStep = ({ item, index }) => (
+    <View key={index} style={styles.stepContainer}>
+      <View style={styles.stepNumberContainer}>
+        <Text style={styles.stepNumberText}>{index + 1}</Text>
       </View>
-      <Text style={styles.stepText}>{item}</Text>
+      <Text style={styles.instructionText}>{item}</Text>
     </View>
   )
 
   return (
-    <SafeAreaView style={styles.main}>
-      <StatusBar barStyle="dark-content" backgroundColor="white"/>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backBtn} onPress={clickBack}>
-            <Ionicons name="arrow-back" size={24} color="#333"/>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
+            <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.heartBtn} onPress={clickHeart}>
-              <Ionicons 
-                name={isFavorite ? "heart" : "heart-outline"} 
-                size={24} 
-                color={isFavorite ? "#007AFF" : "#666"} 
+            <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite}>
+              <Ionicons
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={24}
+                color={isFavorite ? "#007AFF" : "#666"}
               />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.shareBtn} onPress={clickShare}>
+            <TouchableOpacity style={styles.shareButton} onPress={handleSharePress}>
               <Ionicons name="share-outline" size={24} color="#666" />
             </TouchableOpacity>
           </View>
@@ -181,7 +176,7 @@ export default function RecipeDetail(){
             )}
           </View>
           {match && (
-            <View style={styles.matchBox}>
+            <View style={styles.matchContainer}>
               <View style={styles.matchTop}>
                 {match.cookNow ? (
                   <Badge text="Ready to Cook!" variant="cookNow" />
@@ -192,15 +187,15 @@ export default function RecipeDetail(){
                   {match.matchedCount}/{match.totalIngredients} ingredients
                 </Text>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[
                   styles.mainBtn,
                   match.cookNow ? styles.cookBtn : styles.shopBtn
-                ]} 
-                onPress={match.cookNow ? null : clickAddMissing}>
-                <Ionicons 
-                  name={match.cookNow ? "restaurant" : "add-circle"} 
-                  size={20} 
+                ]}
+                onPress={match.cookNow ? null : handleAddMissingIngredients}>
+                <Ionicons
+                  name={match.cookNow ? "restaurant" : "add-circle"}
+                  size={20}
                   color="white" />
                 <Text style={styles.mainBtnText}>
                   {match.cookNow ? "Ready to Cook!" : "Add Missing to Shopping List"}
@@ -210,12 +205,12 @@ export default function RecipeDetail(){
           )}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
-            {recipe.ingredients.map((ingredient,index)=> showIngredient({item: ingredient,index}))}
+            {recipe.ingredients.map((ingredient, index) => renderIngredient({ item: ingredient, index }))}
           </View>
           {recipe.steps && recipe.steps.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Instructions</Text>
-              {recipe.steps.map((step,index)=> showStep({item: step,index}))}
+              {recipe.steps.map((step, index) => renderStep({ item: step, index }))}
             </View>
           )}
         </View>
@@ -225,26 +220,26 @@ export default function RecipeDetail(){
         message={state.snackbar.message}
         actionText={state.snackbar.actionText}
         onActionPress={state.snackbar.onActionPress}
-        onDismiss={() => dispatch(hideSnackbar())}/>
+        onDismiss={() => dispatch(hideSnackbar())} />
     </SafeAreaView>
   )
 }
 
 const styles = StyleSheet.create({
-  main: {
+  container: {
     flex: 1,
     backgroundColor: 'white',
   },
-  loadBox: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadText: {
+  loadingText: {
     fontSize: 16,
     color: '#666',
   },
-  errorBox: {
+  errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -255,7 +250,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 16,
   },
-  backBtn: {
+  backButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 20,
     width: 40,
@@ -285,7 +280,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  heartBtn: {
+  favoriteButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 20,
     width: 40,
@@ -293,7 +288,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  shareBtn: {
+  shareButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 20,
     width: 40,
@@ -326,7 +321,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  matchBox: {
+  matchContainer: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     padding: 16,
@@ -380,12 +375,12 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
   },
-  stepBox: {
+  stepContainer: {
     flexDirection: 'row',
     marginBottom: 16,
     paddingRight: 8,
   },
-  stepNum: {
+  stepNumberContainer: {
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -395,12 +390,12 @@ const styles = StyleSheet.create({
     marginRight: 12,
     marginTop: 2,
   },
-  stepNumText: {
+  stepNumberText: {
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
   },
-  stepText: {
+  instructionText: {
     flex: 1,
     fontSize: 16,
     color: '#333',

@@ -1,94 +1,84 @@
-import React,{useState,useCallback} from 'react'
-import {View,Text,FlatList,StyleSheet,SafeAreaView,StatusBar,TouchableOpacity,Alert,ActivityIndicator} from 'react-native'
-import {useNavigation} from '@react-navigation/native'
-import {Ionicons} from '@expo/vector-icons'
+import React, { useState, useCallback } from 'react'
+import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
+import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import {useStore,addToPantry,removeFromPantry,setPantry,showSnackbar} from '../services/store'
-import {SearchBar} from '../components/SearchBar'
-import {ListItem} from '../components/ListItem'
-import {EmptyState} from '../components/EmptyState'
-import {IngredientConfirmationDialog} from '../components/IngredientConfirmationDialog'
-import {debounce} from '../utils/debounce'
-import {detectIngredients} from '../vision/robustDetector'
+import { useStore, addToPantry, removeFromPantry, setPantry, showSnackbar } from '../services/store'
+import { SearchBar } from '../components/SearchBar'
+import { ListItem } from '../components/ListItem'
+import { EmptyState } from '../components/EmptyState'
+import { IngredientConfirmationDialog } from '../components/IngredientConfirmationDialog'
+import { debounce } from '../utils/debounce'
+import { detectIngredients } from '../vision/robustDetector'
+import { COMMON_INGREDIENTS } from '../constants/ingredients'
 
-const COMMON_INGREDIENTS = [
-  'onion','garlic','tomato','potato','carrot','bell pepper',
-  'chicken breast','ground beef','salmon','eggs','milk','cheese',
-  'rice','pasta','bread','flour','olive oil','butter',
-  'salt','black pepper','basil','oregano','cumin','paprika',
-  'lemon','lime','ginger','mushrooms','spinach','broccoli'
-]
-
-export default function Pantry(){
+export default function Pantry() {
   const navigation = useNavigation()
-  const {state,dispatch} = useStore()
-  const [searchText,setSearchText] = useState('')
-  const [suggestions,setSuggestions] = useState([])
-  const [showSuggestions,setShowSuggestions] = useState(false)
-  const [scanning,setScanning] = useState(false)
-  const [detectedIngredients,setDetectedIngredients] = useState([])
-  const [showConfirmDialog,setShowConfirmDialog] = useState(false)
+  const { state, dispatch } = useStore()
+  const [searchText, setSearchText] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [detectedIngredients, setDetectedIngredients] = useState([])
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
-  const delayedSearch = useCallback(
-    debounce((text)=>{
-      if (text.trim().length > 0){
-        const filtered = COMMON_INGREDIENTS.filter((ingredient)=>
-          ingredient.toLowerCase().includes(text.toLowerCase()) &&
+  const debouncedSearch = useCallback(
+    debounce((text) => {
+      if (text.trim().length > 0) {
+        const filtered = COMMON_INGREDIENTS.filter((ingredient) =>
+          ingredient.toLowerCase().startsWith(text.toLowerCase()) &&
           !state.pantry.items.includes(ingredient)
-        ).slice(0,10)
+        ).slice(0, 10)
         setSuggestions(filtered)
         setShowSuggestions(true)
-      }
-      else{
+      } else {
         setSuggestions([])
         setShowSuggestions(false)
       }
-    },300),
+    }, 300),
     [state.pantry.items]
   )
 
-  const changeSearch = useCallback((text)=>{
+  const handleSearchChange = useCallback((text) => {
     setSearchText(text)
-    delayedSearch(text)
-  },[delayedSearch])
+    debouncedSearch(text)
+  }, [debouncedSearch])
 
-  const addItem = useCallback((ingredient)=>{
+  const addPantryItem = useCallback((ingredient) => {
     const cleanItem = ingredient.trim().toLowerCase()
-    if (cleanItem && !state.pantry.items.includes(cleanItem)){
+    if (cleanItem && !state.pantry.items.includes(cleanItem)) {
       dispatch(addToPantry(cleanItem))
       setSearchText('')
       setSuggestions([])
       setShowSuggestions(false)
     }
-  },[state.pantry.items,dispatch])
+  }, [state.pantry.items, dispatch])
 
-  const removeItem = useCallback((ingredient)=>{
+  const removePantryItem = useCallback((ingredient) => {
     dispatch(removeFromPantry(ingredient))
-  },[dispatch])
+  }, [dispatch])
 
-  const clickSearch = useCallback(()=>{
-    if (searchText.trim()){
-      addItem(searchText)
+  const handleSearchPress = useCallback(() => {
+    if (searchText.trim()) {
+      addPantryItem(searchText)
     }
-  },[searchText,addItem])
+  }, [searchText, addPantryItem])
 
-  const clickScan = useCallback(async ()=>{
+  const handleScanPress = useCallback(async () => {
     try {
-      // Request camera permissions
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
-      
+
       if (!permissionResult.granted) {
         Alert.alert(
           'Permission Required',
           'Camera permission is required to scan your fridge. Please enable it in your device settings.',
-          [{text: 'OK'}]
+          [{ text: 'OK' }]
         )
         return
       }
 
-      // Show options: Camera or Gallery
       Alert.alert(
-        'Scan Fridge',
+        'Scan Item',
         'Choose how to add your photo',
         [
           {
@@ -99,9 +89,9 @@ export default function Pantry(){
                 allowsEditing: true,
                 quality: 0.8,
               })
-              
+
               if (!result.canceled && result.assets?.[0]?.uri) {
-                await processScanImage(result.assets[0].uri)
+                await processImage(result.assets[0].uri)
               }
             },
           },
@@ -113,9 +103,9 @@ export default function Pantry(){
                 allowsEditing: true,
                 quality: 0.8,
               })
-              
+
               if (!result.canceled && result.assets?.[0]?.uri) {
-                await processScanImage(result.assets[0].uri)
+                await processImage(result.assets[0].uri)
               }
             },
           },
@@ -126,54 +116,44 @@ export default function Pantry(){
         ]
       )
     } catch (error) {
-      console.error('Error requesting permissions:', error)
       Alert.alert('Error', 'Failed to access camera. Please try again.')
     }
-  },[])
+  }, [])
 
-  const processScanImage = useCallback(async (imageUri) => {
+  const processImage = useCallback(async (imageUri) => {
     setScanning(true)
     try {
-      console.log('Processing image:', imageUri)
-      
-      // Detect ingredients using robust two-stage pipeline
       const detected = await detectIngredients(imageUri)
-      
-      // Extract names from detected results
       const ingredients = detected.map(d => d.name)
-      
+
       if (ingredients.length === 0) {
         Alert.alert(
           'No Ingredients Found',
           'We couldn\'t detect any ingredients in the image. Try taking a clearer photo or add items manually.',
-          [{text: 'OK'}]
+          [{ text: 'OK' }]
         )
         return
       }
 
-      // Show confirmation dialog with detected items
       setDetectedIngredients(ingredients)
       setShowConfirmDialog(true)
-      
+
     } catch (error) {
-      console.error('Scanning error:', error)
-      
       let errorMessage = 'Failed to scan image. Please try again.'
-      
+
       if (error.message?.includes('Azure Vision API key not configured')) {
         errorMessage = 'Azure Vision is not configured. Please check your API credentials.'
       } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
         errorMessage = 'Network error. Please check your internet connection and try again.'
       }
-      
-      Alert.alert('Scanning Error', errorMessage, [{text: 'OK'}])
+
+      Alert.alert('Scanning Error', errorMessage, [{ text: 'OK' }])
     } finally {
       setScanning(false)
     }
-  },[])
+  }, [])
 
-  const handleConfirmIngredients = useCallback((confirmedItems) => {
-    // Add confirmed items to pantry
+  const onIngredientsConfirmed = useCallback((confirmedItems) => {
     let addedCount = 0
     confirmedItems.forEach(item => {
       if (!state.pantry.items.includes(item)) {
@@ -181,109 +161,108 @@ export default function Pantry(){
         addedCount++
       }
     })
-    
+
     setShowConfirmDialog(false)
     setDetectedIngredients([])
-    
-    // Show success message
+
     dispatch(showSnackbar(
       `Added ${addedCount} new ingredient${addedCount !== 1 ? 's' : ''} to your pantry!`,
       'VIEW RECIPES',
       () => navigation.navigate('Matches')
     ))
-  },[state.pantry.items,dispatch,navigation])
+  }, [state.pantry.items, dispatch, navigation])
 
-  const handleCancelConfirmation = useCallback(() => {
+  const onConfirmationCancelled = useCallback(() => {
     setShowConfirmDialog(false)
     setDetectedIngredients([])
-  },[])
+  }, [])
 
-  const clickClear = useCallback(() => {
+  const handleClearPress = useCallback(() => {
     Alert.alert(
       'Clear Pantry',
       'Are you sure you want to remove all ingredients from your pantry?',
       [
-        {text: 'Cancel',style: 'cancel'},
-        {text: 'Clear',style: 'destructive',onPress: ()=>dispatch(setPantry([])),},
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Clear', style: 'destructive', onPress: () => dispatch(setPantry([])), },
       ]
     )
-  },[dispatch])
+  }, [dispatch])
 
-  const showPantryItem = ({item})=>(
+  const renderPantryItem = ({ item }) => (
     <ListItem
       title={item}
       rightIcon={
         <Ionicons name="close" size={20} color="#FF3B30" />
       }
-      onRightIconPress={()=> removeItem(item)}/>
+      onRightIconPress={() => removePantryItem(item)} />
   )
 
-  const showSuggestion = ({item})=>(
+  const renderSuggestion = ({ item }) => (
     <ListItem
       title={item}
       leftIcon={
-        <Ionicons name="add-circle-outline" size={20} color="#007AFF"/>
+        <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
       }
-      onPress={()=> addItem(item)}
+      onPress={() => addPantryItem(item)}
       style={styles.suggestionItem}
     />
   )
 
-  const showTop = ()=>(
-    <View style={styles.top}>
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
       <Text style={styles.title}>My Pantry</Text>
-      <Text style={styles.sub}>
+      <Text style={styles.subtitle}>
         {state.pantry.items.length} ingredients
       </Text>
       <SearchBar
         placeholder="Add ingredients..."
         value={searchText}
-        onChangeText={changeSearch}
-        onSearch={clickSearch}
-        autoFocus={false}/>
-      <View style={styles.actions}>
-        <TouchableOpacity 
-          style={[styles.action, scanning && styles.disabled]} 
-          onPress={clickScan}
+        onChangeText={handleSearchChange}
+        onSearch={handleSearchPress}
+        autoFocus={false} />
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={[styles.actionButton, scanning && styles.disabled]}
+          onPress={handleScanPress}
           disabled={scanning}>
           {scanning ? (
             <>
               <ActivityIndicator size="small" color="#007AFF" />
-              <Text style={[styles.actionText,{color: '#007AFF'}]}>Scanning...</Text>
+              <Text style={[styles.actionText, { color: '#007AFF' }]}>Scanning...</Text>
             </>
           ) : (
             <>
               <Ionicons name="camera" size={20} color="#007AFF" />
-              <Text style={[styles.actionText,{color: '#007AFF'}]}>Scan Fridge</Text>
+              <Text style={[styles.actionText, { color: '#007AFF' }]}>Scan Item</Text>
             </>
           )}
         </TouchableOpacity>
         {state.pantry.items.length > 0 && (
-          <TouchableOpacity 
-            style={[styles.action,styles.clear]} 
-            onPress={clickClear}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.clear]}
+            onPress={handleClearPress}>
             <Ionicons name="trash-outline" size={20} color="#dc3545" />
-            <Text style={[styles.actionText,styles.clearText]}>Clear All</Text>
+            <Text style={[styles.actionText, styles.clearText]}>Clear All</Text>
           </TouchableOpacity>
         )}
       </View>
     </View>
   )
 
-  const showContent = ()=>{
-    if (showSuggestions && suggestions.length > 0){
+  const renderContent = () => {
+    if (showSuggestions && suggestions.length > 0) {
       return (
-        <View style={styles.suggestBox}>
-          <Text style={styles.suggestTitle}>Suggestions</Text>
+        <View style={styles.suggestionsContainer}>
+          <Text style={styles.suggestionsTitle}>Suggestions</Text>
           <FlatList
             data={suggestions}
-            renderItem={showSuggestion}
-            keyExtractor={(item)=> item}
-            style={styles.suggestList}/>
+            renderItem={renderSuggestion}
+            keyExtractor={(item) => item}
+            style={styles.suggestionsList} />
         </View>
       )
     }
-    if (state.pantry.items.length === 0){
+    if (state.pantry.items.length === 0) {
       return (
         <EmptyState
           icon="basket-outline"
@@ -291,7 +270,7 @@ export default function Pantry(){
           description="Add ingredients you have at home to find matching recipes"
           actionText="Add Your First Ingredient"
           onActionPress={() => {
-            Alert.alert('Add Ingredients','Use the search bar above to add ingredients to your pantry!')
+            Alert.alert('Add Ingredients', 'Use the search bar or Scan above to add ingredients to your pantry!')
           }}
         />
       )
@@ -300,14 +279,14 @@ export default function Pantry(){
     return (
       <FlatList
         data={state.pantry.items}
-        renderItem={showPantryItem}
+        renderItem={renderPantryItem}
         keyExtractor={(item) => item}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.list}
         ListFooterComponent={
           state.pantry.items.length > 0 ? (
-            <TouchableOpacity 
-              style={styles.findButton} 
+            <TouchableOpacity
+              style={styles.findButton}
               onPress={() => navigation.navigate('Matches')}>
               <Text style={styles.findText}>Find Recipes</Text>
             </TouchableOpacity>
@@ -318,29 +297,27 @@ export default function Pantry(){
   }
 
   return (
-    <SafeAreaView style={styles.main}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
-      {showTop()}
-      {showContent()}
-      
-      {/* Ingredient Confirmation Dialog */}
+      {renderHeader()}
+      {renderContent()}
+
       <IngredientConfirmationDialog
         visible={showConfirmDialog}
         ingredients={detectedIngredients}
-        onConfirm={handleConfirmIngredients}
-        onCancel={handleCancelConfirmation}
+        onConfirm={onIngredientsConfirmed}
+        onCancel={onConfirmationCancelled}
       />
     </SafeAreaView>
   )
 }
 
-
 const styles = StyleSheet.create({
-  main: {
+  container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  top: {
+  headerContainer: {
     backgroundColor: 'white',
     paddingTop: 16,
     paddingBottom: 16,
@@ -352,19 +329,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 4,
   },
-  sub: {
+  subtitle: {
     fontSize: 16,
     color: '#666',
     paddingHorizontal: 16,
     marginBottom: 16,
   },
-  actions: {
+  actionsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingTop: 8,
     gap: 12,
   },
-  action: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -407,11 +384,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  suggestBox: {
+  suggestionsContainer: {
     flex: 1,
     backgroundColor: 'white',
   },
-  suggestTitle: {
+  suggestionsTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
@@ -419,7 +396,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#f8f9fa',
   },
-  suggestList: {
+  suggestionsList: {
     flex: 1,
   },
   suggestionItem: {

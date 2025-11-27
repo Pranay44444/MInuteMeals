@@ -1,140 +1,136 @@
-import React,{useEffect,useState,useCallback} from 'react'
-import {View,Text,FlatList,StyleSheet,SafeAreaView,StatusBar,RefreshControl,Alert} from 'react-native'
-import {useNavigation} from '@react-navigation/native'
-import {useStore,setCurrentRecipe,removeFromFavorites,addToFavorites} from '../services/store'
-import {RecipeCard} from '../components/RecipeCard'
-import {EmptyState} from '../components/EmptyState'
-import {getRecipe,checkRecipeMatch,makePantrySet} from '../services/recipes'
+import React, { useEffect, useState, useCallback } from 'react'
+import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar, RefreshControl, Alert } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
+import { useStore, setCurrentRecipe, removeFromFavorites, addToFavorites } from '../services/store'
+import { RecipeCard } from '../components/RecipeCard'
+import { EmptyState } from '../components/EmptyState'
+import { getRecipe, checkRecipeMatch, makePantrySet } from '../services/recipes'
 
-export default function Favorites(){
+export default function Favorites() {
   const navigation = useNavigation()
-  const {state,dispatch} = useStore()
-  const [recipes,setRecipes] = useState([])
-  const [loading,setLoading] = useState(false)
-  const [refreshing,setRefreshing] = useState(false)
+  const { state, dispatch } = useStore()
+  const [recipes, setRecipes] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const loadRecipes = useCallback(async ()=>{
+  const loadRecipes = useCallback(async () => {
     const hasFavorites = state.favorites.length > 0
-    if (!hasFavorites){
+    if (!hasFavorites) {
       setRecipes([])
       return
     }
     setLoading(true)
-    try{
+    try {
       const pantrySet = makePantrySet(state.pantry.items)
-      const recipePromises = state.favorites.map(async (recipeId)=>{
-        try{
+      const recipePromises = state.favorites.map(async (recipeId) => {
+        try {
           const recipe = await getRecipe(recipeId)
-          const hasRecipe = recipe
-          if (hasRecipe){
-            const match = checkRecipeMatch(recipe,pantrySet)
-            return {recipe,match}
+          if (recipe) {
+            const match = checkRecipeMatch(recipe, pantrySet)
+            return { recipe, match }
           }
           return null
-        }
-        catch(error){
+        } catch (error) {
           return null
         }
       })
       const results = await Promise.all(recipePromises)
-      const validRecipes = results.filter((result)=> result !== null)
+      const validRecipes = results.filter((result) => result !== null)
       setRecipes(validRecipes)
-    } 
-    catch(error){
-      Alert.alert('Error','Failed to load favorite recipes. Please try again.')
-    } 
-    finally{
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load favorite recipes. Please try again.')
+    } finally {
       setLoading(false)
     }
-  },[state.favorites,state.pantry.items])
+  }, [state.favorites, state.pantry.items])
 
-  useEffect(()=>{
+  useEffect(() => {
     loadRecipes()
-  },[loadRecipes])
+  }, [loadRecipes])
 
-  const pullRefresh = useCallback(async ()=>{
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     await loadRecipes()
     setRefreshing(false)
-  },[loadRecipes])
+  }, [loadRecipes])
 
-  const clickRecipe = useCallback((item)=>{
+  const handleRecipePress = useCallback((item) => {
     dispatch(setCurrentRecipe({
       recipe: item.recipe,
       match: item.match
     }))
-    navigation.navigate('RecipeDetail',{id: item.recipe.id})
-  },[dispatch])
+    navigation.navigate('RecipeDetail', { id: item.recipe.id })
+  }, [dispatch, navigation])
 
-  const clickHeart = useCallback((recipeId)=>{
+  const toggleFavorite = useCallback((recipeId) => {
     const isFavorite = state.favorites.includes(recipeId)
-    if (isFavorite){
+    if (isFavorite) {
       dispatch(removeFromFavorites(recipeId))
     } else {
       dispatch(addToFavorites(recipeId))
     }
-  },[state.favorites,dispatch])
+  }, [state.favorites, dispatch])
 
-  const showCard = ({item})=>(
+  const renderRecipeCard = ({ item }) => (
     <RecipeCard
       recipe={item.recipe}
       match={item.match}
       isFavorite={state.favorites.includes(item.recipe.id)}
-      onPress={()=>clickRecipe(item)}
-      onToggleFavorite={clickHeart}
-      showMatchInfo={true}/>
+      onPress={() => handleRecipePress(item)}
+      onToggleFavorite={toggleFavorite}
+      showMatchInfo={true} />
   )
 
-  const showTop = ()=>{
+  const renderHeader = () => {
     const count = state.favorites.length
-    const hasNone = count===0
+    const hasNone = count === 0
     return (
-      <View style={styles.top}>
+      <View style={styles.headerContainer}>
         <Text style={styles.title}>My Favorites</Text>
-        <Text style={styles.sub}>
+        <Text style={styles.subtitle}>
           {hasNone ? 'No favorites yet' : `${count} favorite recipes`}
         </Text>
       </View>
     )
   }
 
-  const showEmpty = ()=>(
+  const renderEmptyState = () => (
     <EmptyState
       icon="heart-outline"
       title="No favorite recipes yet"
       description="Tap the heart icon on recipes you love to save them here"
       actionText="Discover Recipes"
-      onActionPress={()=>navigation.navigate('Matches')}
+      onActionPress={() => navigation.navigate('Matches')}
     />
   )
   const hasRecipes = recipes.length > 0
 
   return (
-    <SafeAreaView style={styles.main}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
       {hasRecipes ? (
         <FlatList
           data={recipes}
-          renderItem={showCard}
-          keyExtractor={(item)=>item.recipe.id}
-          ListHeaderComponent={showTop}
+          renderItem={renderRecipeCard}
+          keyExtractor={(item) => item.recipe.id}
+          ListHeaderComponent={renderHeader}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={pullRefresh}
-              tintColor="#007AFF"/>}
+              onRefresh={handleRefresh}
+              tintColor="#007AFF" />}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={styles.recipeList}
         />
       ) : (
-        <View style={styles.main}>
-          {showTop()}
+        <View style={styles.container}>
+          {renderHeader()}
           {loading ? (
-            <View style={styles.load}>
-              <Text style={styles.loadText}>Loading favorites...</Text>
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading favorites...</Text>
             </View>
           ) : (
-            showEmpty()
+            renderEmptyState()
           )}
         </View>
       )}
@@ -143,11 +139,11 @@ export default function Favorites(){
 }
 
 const styles = StyleSheet.create({
-  main: {
+  container: {
     flex: 1,
     backgroundColor: '#f8f9fa'
   },
-  top: {
+  headerContainer: {
     backgroundColor: 'white',
     paddingTop: 16,
     paddingBottom: 16
@@ -159,20 +155,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 4
   },
-  sub: {
+  subtitle: {
     fontSize: 16,
     color: '#666',
     paddingHorizontal: 16
   },
-  list: {
+  recipeList: {
     paddingBottom: 20
   },
-  load: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center'
   },
-  loadText: {
+  loadingText: {
     fontSize: 16,
     color: '#666'
   }

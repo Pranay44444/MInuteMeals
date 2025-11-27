@@ -1,10 +1,13 @@
-import React, {useState, useCallback} from 'react'
-import {View, Text, Modal, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert} from 'react-native'
-import {Ionicons} from '@expo/vector-icons'
+import React, { useState, useCallback } from 'react'
+import { View, Text, Modal, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { COMMON_INGREDIENTS } from '../constants/ingredients'
 
-export const IngredientConfirmationDialog = ({visible, ingredients, onConfirm, onCancel}) => {
+export const IngredientConfirmationDialog = ({ visible, ingredients, onConfirm, onCancel }) => {
   const [selectedItems, setSelectedItems] = useState(new Set(ingredients))
   const [customItem, setCustomItem] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
 
   // Update selected items when ingredients prop changes
   React.useEffect(() => {
@@ -28,8 +31,33 @@ export const IngredientConfirmationDialog = ({visible, ingredients, onConfirm, o
     if (trimmed) {
       setSelectedItems(prev => new Set([...prev, trimmed]))
       setCustomItem('')
+      setSuggestions([])
+      setShowSuggestions(false)
     }
   }, [customItem])
+
+  const handleInputChange = useCallback((text) => {
+    setCustomItem(text)
+    if (text.trim().length > 0) {
+      const filtered = COMMON_INGREDIENTS.filter(ing =>
+        ing.toLowerCase().startsWith(text.toLowerCase()) &&
+        !ingredients.includes(ing) &&
+        !selectedItems.has(ing)
+      ).slice(0, 5)
+      setSuggestions(filtered)
+      setShowSuggestions(filtered.length > 0)
+    } else {
+      setSuggestions([])
+      setShowSuggestions(false)
+    }
+  }, [ingredients, selectedItems])
+
+  const selectSuggestion = useCallback((item) => {
+    setSelectedItems(prev => new Set([...prev, item]))
+    setCustomItem('')
+    setSuggestions([])
+    setShowSuggestions(false)
+  }, [])
 
   const handleConfirm = useCallback(() => {
     const selected = Array.from(selectedItems)
@@ -54,7 +82,9 @@ export const IngredientConfirmationDialog = ({visible, ingredients, onConfirm, o
       transparent={true}
       animationType="slide"
       onRequestClose={handleCancel}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.overlay}>
         <View style={styles.dialog}>
           {/* Header */}
           <View style={styles.header}>
@@ -70,7 +100,7 @@ export const IngredientConfirmationDialog = ({visible, ingredients, onConfirm, o
           </Text>
 
           {/* Items List */}
-          <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.list} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
             {allItems.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="alert-circle-outline" size={48} color="#ccc" />
@@ -109,13 +139,32 @@ export const IngredientConfirmationDialog = ({visible, ingredients, onConfirm, o
             )}
           </ScrollView>
 
+          {/* Suggestions List */}
+          {showSuggestions && (
+            <ScrollView
+              style={styles.suggestionsContainer}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}>
+              {suggestions.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.suggestionItem}
+                  onPress={() => selectSuggestion(item)}>
+                  <Ionicons name="add" size={16} color="#007AFF" />
+                  <Text style={styles.suggestionText}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
           {/* Add Custom Item */}
           <View style={styles.addCustom}>
             <TextInput
               style={styles.customInput}
               placeholder="Add custom ingredient..."
+              placeholderTextColor="#999"
               value={customItem}
-              onChangeText={setCustomItem}
+              onChangeText={handleInputChange}
               onSubmitEditing={addCustomItem}
               returnKeyType="done"
             />
@@ -143,7 +192,7 @@ export const IngredientConfirmationDialog = ({visible, ingredients, onConfirm, o
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -301,6 +350,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  suggestionsContainer: {
+    maxHeight: 120,
+    backgroundColor: '#f8f9fa',
+    marginHorizontal: 20,
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    gap: 8,
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
   },
 })
 
