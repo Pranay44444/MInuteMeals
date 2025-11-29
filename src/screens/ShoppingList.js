@@ -1,141 +1,87 @@
-import React,{useState,useCallback} from 'react'
-import {View,Text,FlatList,StyleSheet,SafeAreaView,StatusBar,TouchableOpacity,Alert,TextInput} from 'react-native'
-import {Ionicons} from '@expo/vector-icons'
-import {useStore,addToShoppingList,removeFromShoppingList,updateShoppingItem,markShoppingItemBought,moveBoughtToPantry,showSnackbar,setShoppingList} from '../services/store'
-import {ListItem} from '../components/ListItem'
-import {EmptyState} from '../components/EmptyState'
+import React, { useState, useCallback } from 'react'
+import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, Alert, TextInput, Modal } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { useStore, addToShoppingList, removeFromShoppingList, updateShoppingItem, markShoppingItemBought, moveBoughtToPantry, showSnackbar, setShoppingList } from '../services/store'
+import { ListItem } from '../components/ListItem'
+import { EmptyState } from '../components/EmptyState'
 
-export default function ShoppingList(){
-  const {state,dispatch} = useStore()
-  const [editingId,setEditingId] = useState(null)
-  const [editQty,setEditQty] = useState('')
-  const [editUnit,setEditUnit] = useState('')
+export default function ShoppingList() {
+  const { state, dispatch } = useStore()
+  const [editingItem, setEditingItem] = useState(null)
+  const [editQty, setEditQty] = useState('')
 
-  const clickCheck = useCallback((itemId)=>{
-    const item = state.shoppingList.find((item)=> item.id===itemId)
-    if (item){
-      dispatch(markShoppingItemBought(itemId,!item.bought))
+  const clickCheck = useCallback((itemId) => {
+    const item = state.shoppingList.find((item) => item.id === itemId)
+    if (item) {
+      dispatch(markShoppingItemBought(itemId, !item.bought))
     }
-  },[state.shoppingList,dispatch])
+  }, [state.shoppingList, dispatch])
 
-  const clickRemove = useCallback((itemId)=>{
+  const clickRemove = useCallback((itemId) => {
     dispatch(removeFromShoppingList(itemId))
-  },[dispatch])
+  }, [dispatch])
 
-  const clickEdit = useCallback((item)=>{
-    setEditingId(item.id)
+  const clickEdit = useCallback((item) => {
+    setEditingItem(item)
     setEditQty(item.qty?.toString() || '')
-    setEditUnit(item.unit || '')
-  },[])
+  }, [])
 
-  const clickSave = useCallback((item)=>{
-    dispatch(updateShoppingItem({
-      ...item,
-      qty: editQty,
-      unit: editUnit,
-    }))
-    setEditingId(null)
+  const clickSave = useCallback(() => {
+    if (editingItem) {
+      dispatch(updateShoppingItem({
+        ...editingItem,
+        qty: editQty,
+      }))
+      setEditingItem(null)
+      setEditQty('')
+    }
+  }, [editQty, editingItem, dispatch])
+
+  const clickCancel = useCallback(() => {
+    setEditingItem(null)
     setEditQty('')
-    setEditUnit('')
-  },[editQty,editUnit,dispatch])
+  }, [])
 
-  const clickCancel = useCallback(()=>{
-    setEditingId(null)
-    setEditQty('')
-    setEditUnit('')
-  },[])
-
-  const clickMoveToPantry = useCallback(()=>{
-    const boughtItems = state.shoppingList.filter((item)=> item.bought)
-    if (boughtItems.length===0){
-      Alert.alert('No Items','Mark items as bought first to move them to your pantry.')
+  const clickMoveToPantry = useCallback(() => {
+    const boughtItems = state.shoppingList.filter((item) => item.bought)
+    if (boughtItems.length === 0) {
+      Alert.alert('No Items', 'Mark items as bought first to move them to your pantry.')
       return
     }
     Alert.alert(
       'Move to Pantry',
       `Move ${boughtItems.length} bought items to your pantry and remove them from shopping list?`,
       [
-        {text:'Cancel',style:'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Move',
-          onPress: ()=>{
+          onPress: () => {
             dispatch(moveBoughtToPantry())
-            Alert.alert('Success',`Moved ${boughtItems.length} items to your pantry!`)
+            Alert.alert('Success', `Moved ${boughtItems.length} items to your pantry!`)
           },
         },
       ]
     )
-  },[state.shoppingList,dispatch])
+  }, [state.shoppingList, dispatch])
 
-  const clickClear = useCallback(()=>{
+  const clickClear = useCallback(() => {
     Alert.alert(
       'Clear Shopping List',
       'Are you sure you want to remove all items from your shopping list?',
       [
-        {text:'Cancel',style:'cancel'},
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Clear',
           style: 'destructive',
-          onPress: ()=> dispatch(setShoppingList([])),
+          onPress: () => dispatch(setShoppingList([])),
         },
       ]
     )
-  },[dispatch])
+  }, [dispatch])
 
-  const showItem = ({item})=>{
-    const isEditing = editingId === item.id
-    
-    if (isEditing){
-      return (
-        <View style={styles.editItem}>
-          <View style={styles.editTop}>
-            <Text style={styles.editName}>{item.name}</Text>
-          </View>
-          
-          <View style={styles.editInputs}>
-            <View style={styles.editInputBox}>
-              <Text style={styles.editLabel}>Qty</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editQty}
-                onChangeText={setEditQty}
-                placeholder="2"
-                keyboardType="numeric"
-              />
-            </View>
-            
-            <View style={styles.editInputBox}>
-              <Text style={styles.editLabel}>Unit</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editUnit}
-                onChangeText={setEditUnit}
-                placeholder="cups"
-              />
-            </View>
-          </View>
-          
-          <View style={styles.editBtns}>
-            <TouchableOpacity 
-              style={styles.cancelBtn} 
-              onPress={clickCancel}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.saveBtn} 
-              onPress={() => clickSave(item)}
-            >
-              <Text style={styles.saveText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )
-    }
-
+  const showItem = ({ item }) => {
     const quantityText = item.qty && item.unit ? `${item.qty} ${item.unit}` : item.qty || ''
-    const subtitle = [quantityText,item.source].filter(Boolean).join(' • ')
+    const subtitle = quantityText
 
     return (
       <ListItem
@@ -149,12 +95,12 @@ export default function ShoppingList(){
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => clickEdit(item)}>
-              <Ionicons name="create-outline" size={20} color="#666"/>
+              <Ionicons name="create-outline" size={20} color="#666" />
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionBtn}
               onPress={() => clickRemove(item.id)}>
-              <Ionicons name="trash-outline" size={20} color="#FF3B30"/>
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
             </TouchableOpacity>
           </View>
         }
@@ -172,9 +118,9 @@ export default function ShoppingList(){
     )
   }
 
-  const showTop = ()=>{
+  const showTop = () => {
     const totalItems = state.shoppingList.length
-    const boughtItems = state.shoppingList.filter((item)=> item.bought).length
+    const boughtItems = state.shoppingList.filter((item) => item.bought).length
     const remainingItems = totalItems - boughtItems
 
     return (
@@ -186,16 +132,16 @@ export default function ShoppingList(){
         {totalItems > 0 && (
           <View style={styles.buttons}>
             {boughtItems > 0 && (
-              <TouchableOpacity 
-                style={styles.moveBtn} 
+              <TouchableOpacity
+                style={styles.moveBtn}
                 onPress={clickMoveToPantry}>
                 <Text style={styles.moveBtnText}>
                   Move to Pantry ({boughtItems})
                 </Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity 
-              style={styles.clearBtn} 
+            <TouchableOpacity
+              style={styles.clearBtn}
               onPress={clickClear}>
               <Text style={styles.clearBtnText}>Clear List</Text>
             </TouchableOpacity>
@@ -208,7 +154,7 @@ export default function ShoppingList(){
 
   return (
     <SafeAreaView style={styles.main}>
-      <StatusBar barStyle="dark-content" backgroundColor="white"/>
+      <StatusBar barStyle="dark-content" backgroundColor="white" />
       {state.shoppingList.length > 0 ? (
         <FlatList
           data={state.shoppingList}
@@ -216,16 +162,54 @@ export default function ShoppingList(){
           keyExtractor={(item) => item.id}
           ListHeaderComponent={showTop}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.list}/>
+          contentContainerStyle={styles.list} />
       ) : (
         <View style={styles.main}>
           {showTop()}
           <EmptyState
             icon="list-outline"
             title="Your shopping list is empty"
-            description="Add missing ingredients from recipes to build your shopping list"/>
+            description="Add missing ingredients from recipes to build your shopping list" />
         </View>
       )}
+
+      <Modal
+        visible={editingItem !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={clickCancel}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{editingItem?.name}</Text>
+
+            <View style={styles.modalInputContainer}>
+              <Text style={styles.modalLabel}>Quantity</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editQty}
+                onChangeText={(text) => setEditQty(text.replace(/[^0-9.]/g, ''))}
+                placeholder="2"
+                keyboardType="numeric"
+                autoFocus={true}
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={clickCancel}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                onPress={clickSave}>
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -293,7 +277,7 @@ const styles = StyleSheet.create({
   },
   boughtText: {
     textDecorationLine: 'line-through',
-    color: '#999',
+    opacity: 0.5,
   },
   actions: {
     flexDirection: 'row',
@@ -302,70 +286,69 @@ const styles = StyleSheet.create({
   actionBtn: {
     padding: 4,
   },
-  editItem: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
     backgroundColor: 'white',
-    padding: 16,
-    marginBottom: 1,
-    borderLeftWidth: 3,
-    borderLeftColor: '#007AFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
   },
-  editTop: {
-    marginBottom: 12,
-  },
-  editName: {
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 20,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  editInputs: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+  modalInputContainer: {
+    marginBottom: 24,
   },
-  editInputBox: {
-    flex: 1,
-  },
-  editLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+  modalLabel: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#666',
+    marginBottom: 8,
   },
-  editInput: {
+  modalInput: {
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 14,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
     backgroundColor: '#f8f9fa',
   },
-  editBtns: {
+  modalButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
-  cancelBtn: {
+  modalCancelBtn: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
     backgroundColor: '#f0f0f0',
-  },
-  saveBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 6,
     alignItems: 'center',
-    backgroundColor: '#007AFF',
   },
-  cancelText: {
-    fontSize: 14,
-    fontWeight: '500',
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#666',
   },
-  saveText: {
-    fontSize: 14,
-    fontWeight: '500',
+  modalSaveBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+  },
+  modalSaveText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: 'white',
   },
 })

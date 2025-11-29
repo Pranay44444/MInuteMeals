@@ -12,6 +12,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/native": "^7.1.8",
@@ -27,6 +28,7 @@
     "expo-router": "~6.0.14",
     "expo-sharing": "^14.0.7",
     "expo-status-bar": "~3.0.8",
+    "lottie-react-native": "~7.3.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
@@ -44,7 +46,7 @@
   "devDependencies": {
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
-    "dotenv": "^17.2.2",
+    "dotenv": "^17.2.3",
     "jest": "^30.2.0",
     "react-test-renderer": "^19.1.0"
   }

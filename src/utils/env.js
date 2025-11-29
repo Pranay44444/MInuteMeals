@@ -1,12 +1,12 @@
 import Constants from 'expo-constants'
 
-export const getApiKey = ()=>{
-  const key = Constants.expoConfig?.extra?.spoonacularApiKey || 
-              Constants.manifest?.extra?.spoonacularApiKey ||
-              process.env.SPOONACULAR_API_KEY || 
-              null
-  
-  if (key && key.length < 20){
+export const getApiKey = () => {
+  const key = Constants.expoConfig?.extra?.geminiApiKey ||
+    Constants.manifest?.extra?.geminiApiKey ||
+    process.env.GEMINI_API_KEY ||
+    null
+
+  if (key && key.length < 20) {
     console.warn('Invalid API key format detected')
     return null
   }

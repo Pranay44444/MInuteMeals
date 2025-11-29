@@ -8,6 +8,11 @@ const initialState = {
   shoppingList: [],
   recipes: [],
   currentRecipe: null,
+  generatedRecipes: [],
+  recipesLoading: false,
+  recipesError: null,
+  hasMoreRecipes: true,
+  currentPage: 0,
   filters: {
     isVegetarian: null,
     difficulty: null,
@@ -212,6 +217,48 @@ const reducer = (state, action) => {
           visible: false
         }
       }
+    case 'SET_GENERATED_RECIPES':
+      return {
+        ...state,
+        generatedRecipes: action.payload,
+        recipesError: null
+      }
+    case 'APPEND_GENERATED_RECIPES':
+      return {
+        ...state,
+        generatedRecipes: [...state.generatedRecipes, ...action.payload],
+        recipesError: null
+      }
+    case 'SET_RECIPES_LOADING':
+      return {
+        ...state,
+        recipesLoading: action.payload
+      }
+    case 'SET_RECIPES_ERROR':
+      return {
+        ...state,
+        recipesError: action.payload,
+        recipesLoading: false
+      }
+    case 'SET_HAS_MORE_RECIPES':
+      return {
+        ...state,
+        hasMoreRecipes: action.payload
+      }
+    case 'INCREMENT_RECIPE_PAGE':
+      return {
+        ...state,
+        currentPage: state.currentPage + 1
+      }
+    case 'RESET_RECIPE_STATE':
+      return {
+        ...state,
+        generatedRecipes: [],
+        recipesLoading: false,
+        recipesError: null,
+        hasMoreRecipes: true,
+        currentPage: 0
+      }
     default:
       return state
   }
@@ -322,6 +369,39 @@ export const showSnackbar = (message, actionText = null, onActionPress = null) =
 
 export const hideSnackbar = () => ({
   type: 'HIDE_SNACKBAR'
+})
+
+export const setGeneratedRecipes = (recipes) => ({
+  type: 'SET_GENERATED_RECIPES',
+  payload: recipes
+})
+
+export const appendGeneratedRecipes = (recipes) => ({
+  type: 'APPEND_GENERATED_RECIPES',
+  payload: recipes
+})
+
+export const setRecipesLoading = (isLoading) => ({
+  type: 'SET_RECIPES_LOADING',
+  payload: isLoading
+})
+
+export const setRecipesError = (error) => ({
+  type: 'SET_RECIPES_ERROR',
+  payload: error
+})
+
+export const setHasMoreRecipes = (hasMore) => ({
+  type: 'SET_HAS_MORE_RECIPES',
+  payload: hasMore
+})
+
+export const incrementRecipePage = () => ({
+  type: 'INCREMENT_RECIPE_PAGE'
+})
+
+export const resetRecipeState = () => ({
+  type: 'RESET_RECIPE_STATE'
 })
 
 const AppContext = createContext()

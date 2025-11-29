@@ -3,7 +3,7 @@ import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar, TouchableOpa
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import { useStore, addToPantry, removeFromPantry, setPantry, showSnackbar } from '../services/store'
+import { useStore, addToPantry, removeFromPantry, setPantry, showSnackbar, resetRecipeState, setGeneratedRecipes, setRecipesLoading, setRecipesError } from '../services/store'
 import { SearchBar } from '../components/SearchBar'
 import { ListItem } from '../components/ListItem'
 import { EmptyState } from '../components/EmptyState'
@@ -11,6 +11,7 @@ import { IngredientConfirmationDialog } from '../components/IngredientConfirmati
 import { debounce } from '../utils/debounce'
 import { detectIngredients } from '../vision/robustDetector'
 import { COMMON_INGREDIENTS } from '../constants/ingredients'
+import { findRecipes } from '../services/recipes'
 
 export default function Pantry() {
   const navigation = useNavigation()
@@ -188,6 +189,35 @@ export default function Pantry() {
     )
   }, [dispatch])
 
+  const handleFindRecipes = useCallback(async () => {
+    if (state.pantry.items.length === 0) {
+      Alert.alert('No Ingredients', 'Add some ingredients to your pantry first!')
+      return
+    }
+
+    try {
+      dispatch(resetRecipeState())
+      dispatch(setRecipesLoading(true))
+
+      const result = await findRecipes(state.pantry.items, state.filters, { limit: 3 })
+      const recipes = result.recipes || []
+
+      dispatch(setGeneratedRecipes(recipes))
+      dispatch(setRecipesLoading(false))
+
+      if (recipes.length > 0) {
+        navigation.navigate('Matches')
+      } else {
+        Alert.alert('No Recipes Found', 'Try adjusting your filters or adding more ingredients.')
+      }
+    } catch (error) {
+      console.error('Error finding recipes:', error)
+      dispatch(setRecipesError(error.message || 'Failed to find recipes'))
+      dispatch(setRecipesLoading(false))
+      Alert.alert('Error', 'Failed to find recipes. Please try again.')
+    }
+  }, [state.pantry.items, state.filters, dispatch, navigation])
+
   const renderPantryItem = ({ item }) => (
     <ListItem
       title={item}
@@ -286,9 +316,17 @@ export default function Pantry() {
         ListFooterComponent={
           state.pantry.items.length > 0 ? (
             <TouchableOpacity
-              style={styles.findButton}
-              onPress={() => navigation.navigate('Matches')}>
-              <Text style={styles.findText}>Find Recipes</Text>
+              style={[styles.findButton, state.recipesLoading && styles.findButtonLoading]}
+              onPress={handleFindRecipes}
+              disabled={state.recipesLoading}>
+              {state.recipesLoading ? (
+                <>
+                  <ActivityIndicator size="small" color="#ffffff" />
+                  <Text style={styles.findText}>Finding Recipes...</Text>
+                </>
+              ) : (
+                <Text style={styles.findText}>Find Recipes</Text>
+              )}
             </TouchableOpacity>
           ) : null
         }
@@ -377,6 +415,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     minWidth: 160,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  findButtonLoading: {
+    opacity: 0.7,
   },
   findText: {
     color: '#ffffff',

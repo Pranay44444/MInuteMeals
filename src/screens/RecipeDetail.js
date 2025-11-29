@@ -7,8 +7,8 @@ import { useStore, addToFavorites, removeFromFavorites, addToShoppingList, showS
 import { Badge } from '../components/Badge'
 import { ListItem } from '../components/ListItem'
 import { Snackbar } from '../components/Snackbar'
-import { getRecipe } from '../services/recipes'
-import { checkRecipeMatch, makePantrySet, getMissingForShopping } from '../services/recipes'
+import { getRecipe, checkRecipeMatch, makePantrySet, getMissingForShopping } from '../services/recipes'
+import { convertIngredientsToIndianUnits } from '../utils/unitConverter'
 
 export default function RecipeDetail() {
   const navigation = useNavigation()
@@ -23,15 +23,24 @@ export default function RecipeDetail() {
     if (!id) return
     setLoading(true)
     try {
-      if (state.currentRecipe && state.currentRecipe.recipe.id === id) {
+      if (state.currentRecipe &&
+        state.currentRecipe.recipe.id === id &&
+        state.currentRecipe.recipe.steps &&
+        state.currentRecipe.recipe.steps.length > 0) {
         setRecipe(state.currentRecipe.recipe)
         setMatch(state.currentRecipe.match)
       } else {
         const fetchedRecipe = await getRecipe(id)
         if (fetchedRecipe) {
-          setRecipe(fetchedRecipe)
+          // Convert ingredients to Indian units
+          const convertedRecipe = {
+            ...fetchedRecipe,
+            ingredients: convertIngredientsToIndianUnits(fetchedRecipe.ingredients || [])
+          }
+
+          setRecipe(convertedRecipe)
           const pantrySet = makePantrySet(state.pantry.items)
-          const recipeMatch = checkRecipeMatch(fetchedRecipe, pantrySet)
+          const recipeMatch = checkRecipeMatch(convertedRecipe, pantrySet)
           setMatch(recipeMatch)
         }
       }
@@ -64,14 +73,14 @@ export default function RecipeDetail() {
       ))
       return
     }
-    const shoppingItems = getMissingForShopping(match, recipe.title)
+    const shoppingItems = getMissingForShopping(match, recipe.title, recipe.ingredients)
     dispatch(addToShoppingList(shoppingItems))
     dispatch(showSnackbar(
       `Added ${shoppingItems.length} ingredients to shopping list`,
       'VIEW LIST',
       () => navigation.navigate('Shopping')
     ))
-  }, [match, recipe, dispatch])
+  }, [match, recipe, dispatch, navigation])
 
   const handleBackPress = useCallback(() => {
     navigation.goBack()

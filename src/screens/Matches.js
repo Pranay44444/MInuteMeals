@@ -1,134 +1,127 @@
-import React,{useEffect,useState,useCallback,useRef} from 'react'
-import {View,Text,FlatList,StyleSheet,RefreshControl,Alert,SafeAreaView,StatusBar,TouchableOpacity} from 'react-native'
-import {useFocusEffect,useNavigation} from '@react-navigation/native'
-import {useStore,setCurrentRecipe,setRecipes,setLoading,setError,setFilter,resetFilters,addToFavorites,removeFromFavorites} from '../services/store'
-import {FilterBar} from '../components/FilterBar'
-import {RecipeCard} from '../components/RecipeCard'
-import {RecipeSkeleton} from '../components/RecipeSkeleton'
-import {EmptyState} from '../components/EmptyState'
-import {findRecipes,normalizeIngredient,processRecipes,getFilters} from '../services/recipes'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { View, Text, FlatList, StyleSheet, RefreshControl, Alert, SafeAreaView, StatusBar, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { useFocusEffect, useNavigation } from '@react-navigation/native'
+import { useStore, setCurrentRecipe, setRecipes, setLoading, setError, setFilter, resetFilters, addToFavorites, removeFromFavorites, appendGeneratedRecipes, setRecipesLoading, setRecipesError, setHasMoreRecipes } from '../services/store'
+import { FilterBar } from '../components/FilterBar'
+import { RecipeCard } from '../components/RecipeCard'
+import { RecipeSkeleton } from '../components/RecipeSkeleton'
+import { EmptyState } from '../components/EmptyState'
+import { findRecipes, normalizeIngredient, processRecipes, getFilters } from '../services/recipes'
+import { convertIngredientsToIndianUnits } from '../utils/unitConverter'
 
-export default function Matches(){
+export default function Matches() {
   const navigation = useNavigation()
-  const {state,dispatch} = useStore()
-  const [refreshing,setRefreshing] = useState(false)
-  const [recipesWithMatches,setRecipesWithMatches] = useState([])
-  const [filterOptions,setFilterOptions] = useState({})
-  const [isLoading,setIsLoading] = useState(false)
-  const abortControllerRef = useRef(null)
-  const requestIdRef = useRef(0)
-  const pantryKey = state.pantry.items
-    .map(name => normalizeIngredient(name))
-    .sort()
-    .join(',')
-  const filtersKey = JSON.stringify({
-    vegMode: state.filters.isVegetarian,
-    maxTime: state.filters.maxTime,
-    difficulty: state.filters.difficulty,
-  })
+  const { state, dispatch } = useStore()
+  const [recipesWithMatches, setRecipesWithMatches] = useState([])
+  const [filterOptions, setFilterOptions] = useState({})
 
-  const loadRecipes = useCallback(async (forceRefresh=false)=>{
-    if (abortControllerRef.current){
-      abortControllerRef.current.abort()
-    }
-    abortControllerRef.current = new AbortController()
-    const currentRequestId = ++requestIdRef.current
-    setIsLoading(true)
-    dispatch(setLoading(true))
-    dispatch(setError(null))
-    try{
-      let recipes = []
-      const options = {signal: abortControllerRef.current.signal}
-      if (state.pantry.items.length >= 1){
-        const result = await findRecipes(state.pantry.items,state.filters,options)
-        recipes = result.recipes || []
-      }
-      if (currentRequestId===requestIdRef.current){
-        const recipesWithMatchData = processRecipes(recipes,state.pantry.items)
-        setRecipesWithMatches(recipesWithMatchData)
-        setFilterOptions(getFilters(recipes))
-        dispatch(setRecipes(recipes))
-      }
-    }
-    catch(error){
-      if (currentRequestId === requestIdRef.current && error.name !== 'AbortError'){
-        console.error('Error loading recipes:',error)
-        dispatch(setError('Failed to load recipes. Please try again.'))
-        if (forceRefresh){
-          Alert.alert('Error','Failed to load recipes. Please check your connection and try again.')
-        }
-      }
-    }
-    finally{
-      if (currentRequestId === requestIdRef.current){
-        setIsLoading(false)
-        dispatch(setLoading(false))
-      }
-    }
-  },[state.pantry.items,state.filters,dispatch])
-
+  // Update local state when generated recipes change or filters change
   useEffect(() => {
-    loadRecipes()
-  },[pantryKey,filtersKey])
+    if (state.generatedRecipes.length > 0) {
+      // Convert all recipes to Indian units
+      const convertedRecipes = state.generatedRecipes.map(recipe => ({
+        ...recipe,
+        ingredients: convertIngredientsToIndianUnits(recipe.ingredients || [])
+      }))
 
-  useFocusEffect(
-    useCallback(() => {
-      loadRecipes()
-    },[loadRecipes])
-  )
+      // Apply veg/non-veg filter locally
+      let filteredRecipes = convertedRecipes
 
-  useEffect(()=>{
-    return ()=>{
-      if (abortControllerRef.current){
-        abortControllerRef.current.abort()
+      if (state.filters.isVegetarian !== null) {
+        filteredRecipes = filteredRecipes.filter(recipe =>
+          recipe.isVegetarian === state.filters.isVegetarian
+        )
       }
+
+      const recipesWithMatchData = processRecipes(filteredRecipes, state.pantry.items)
+      setRecipesWithMatches(recipesWithMatchData)
+      setFilterOptions(getFilters(convertedRecipes))
+    } else {
+      setRecipesWithMatches([])
+      setFilterOptions({})
     }
-  },[])
+  }, [state.generatedRecipes, state.pantry.items, state.filters.isVegetarian, dispatch])
 
-  const pullRefresh = useCallback(async ()=>{
-    setRefreshing(true)
-    await loadRecipes(true)
-    setRefreshing(false)
-  },[loadRecipes])
+  const handleLoadMore = useCallback(async () => {
+    if (state.recipesLoading || !state.hasMoreRecipes) return
 
-  const clickRecipe = useCallback((item)=>{
+    try {
+      dispatch(setRecipesLoading(true))
+
+      const result = await findRecipes(state.pantry.items, state.filters, { limit: 3 })
+      const newRecipes = result.recipes || []
+
+      if (newRecipes.length > 0) {
+        // Filter out duplicates by comparing recipe titles (case-insensitive)
+        const existingTitles = new Set(
+          state.generatedRecipes.map(r => r.title.toLowerCase())
+        )
+        const uniqueNewRecipes = newRecipes.filter(
+          recipe => !existingTitles.has(recipe.title.toLowerCase())
+        )
+
+        if (uniqueNewRecipes.length > 0) {
+          dispatch(appendGeneratedRecipes(uniqueNewRecipes))
+        } else {
+          // All recipes were duplicates, no more unique recipes available
+          dispatch(setHasMoreRecipes(false))
+        }
+      } else {
+        // No more recipes available
+        dispatch(setHasMoreRecipes(false))
+      }
+
+      dispatch(setRecipesLoading(false))
+    } catch (error) {
+      console.error('Error loading more recipes:', error)
+      dispatch(setRecipesError(error.message || 'Failed to load more recipes'))
+      dispatch(setRecipesLoading(false))
+      Alert.alert('Error', 'Failed to load more recipes. Please try again.')
+    }
+  }, [state.pantry.items, state.filters, state.recipesLoading, state.hasMoreRecipes, state.generatedRecipes, dispatch])
+
+
+
+
+
+  const clickRecipe = useCallback((item) => {
     dispatch(setCurrentRecipe({
       recipe: item.recipe,
       match: item.match,
     }))
-    navigation.navigate('RecipeDetail',{id: item.recipe.id})
-  },[dispatch])
+    navigation.navigate('RecipeDetail', { id: item.recipe.id })
+  }, [dispatch])
 
-  const clickHeart = useCallback((recipeId)=>{
-    if (state.favorites.includes(recipeId)){
+  const clickHeart = useCallback((recipeId) => {
+    if (state.favorites.includes(recipeId)) {
       dispatch(removeFromFavorites(recipeId))
-    }else{
+    } else {
       dispatch(addToFavorites(recipeId))
     }
-  },[state.favorites,dispatch])
+  }, [state.favorites, dispatch])
 
-  const changeFilter = useCallback((filterType,value)=>{
-    dispatch(setFilter(filterType,value))
-  },[dispatch])
+  const changeFilter = useCallback((filterType, value) => {
+    dispatch(setFilter(filterType, value))
+  }, [dispatch])
 
   const clearFilters = useCallback(() => {
     dispatch(resetFilters())
-  },[dispatch])
+  }, [dispatch])
 
   const showSkeletons = () => {
-    return Array.from({length: 6},(_,index) => (
+    return Array.from({ length: 6 }, (_, index) => (
       <RecipeSkeleton key={`skeleton-${index}`} />
     ))
   }
 
-  const showSectionHeader = (title,count)=>(
+  const showSectionHeader = (title, count) => (
     <View style={styles.section}>
       <Text style={styles.secTitle}>{title}</Text>
       <Text style={styles.secCount}>({count})</Text>
     </View>
   )
 
-  const showEmptyPantry = ()=>(
+  const showEmptyPantry = () => (
     <View style={styles.emptyBox}>
       <Text style={styles.emptyTitle}>No ingredients added</Text>
       <Text style={styles.emptySub}>
@@ -143,9 +136,23 @@ export default function Matches(){
   )
 
   const showEmpty = () => {
-    if (state.pantry.items.length === 0){
+    if (state.pantry.items.length === 0) {
       return showEmptyPantry()
     }
+
+    // If pantry has items but no recipes, prompt to find recipes
+    if (state.generatedRecipes.length === 0) {
+      return (
+        <EmptyState
+          icon="search-outline"
+          title="No recipes loaded"
+          subtitle="Click 'Find Recipes' from the Pantry to discover matching recipes."
+          actionText="Go to Pantry"
+          onActionPress={() => navigation.navigate('Pantry')}
+        />
+      )
+    }
+
     return (
       <EmptyState
         title="No recipes found"
@@ -156,9 +163,9 @@ export default function Matches(){
     )
   }
 
-  const showCard = ({item})=>{
-    if (item.type === 'section-header'){
-      return showSectionHeader(item.title,item.count)
+  const showCard = ({ item }) => {
+    if (item.type === 'section-header') {
+      return showSectionHeader(item.title, item.count)
     }
     return (
       <RecipeCard
@@ -171,57 +178,49 @@ export default function Matches(){
     )
   }
 
-  const prepareData = ()=>{
-    if (isLoading){
-      return showSkeletons().map((skeleton,index)=>({ 
-        key: `skeleton-${index}`, 
-        type: 'skeleton',
-        component: skeleton 
-      }))
-    }
-
-    if (recipesWithMatches.length === 0){
+  const prepareData = () => {
+    if (recipesWithMatches.length === 0) {
       return []
     }
     const data = []
-    if (state.pantry.items.length === 0){
+    if (state.pantry.items.length === 0) {
       return data
-    }else{
+    } else {
       const cookNowRecipes = recipesWithMatches
         .filter(item => item.match.missingCount === 0)
-        .sort((a,b)=> b.match.matchedCount - a.match.matchedCount)
+        .sort((a, b) => b.match.matchedCount - a.match.matchedCount)
       const almostThereRecipes = recipesWithMatches
-        .filter(item => 
-          item.match.missingCount > 0 && 
+        .filter(item =>
+          item.match.missingCount > 0 &&
           item.match.missingCount <= 5 &&
           item.match.matchedCount > 0
         )
-        .sort((a,b)=>{
-          if (b.match.matchedCount !== a.match.matchedCount){
+        .sort((a, b) => {
+          if (b.match.matchedCount !== a.match.matchedCount) {
             return b.match.matchedCount - a.match.matchedCount
           }
           return a.match.missingCount - b.match.missingCount
         })
-      if (cookNowRecipes.length > 0){
+      if (cookNowRecipes.length > 0) {
         data.push({
           key: 'cook-now-header',
           type: 'section-header',
           title: 'Cook Now',
           count: cookNowRecipes.length,
         })
-        cookNowRecipes.forEach((item,index)=>{
-          data.push({...item,key: `cook-now-${index}`})
+        cookNowRecipes.forEach((item, index) => {
+          data.push({ ...item, key: `cook-now-${index}` })
         })
       }
-      if (almostThereRecipes.length > 0){
+      if (almostThereRecipes.length > 0) {
         data.push({
           key: 'almost-there-header',
           type: 'section-header',
           title: 'Almost There',
           count: almostThereRecipes.length,
         })
-        almostThereRecipes.forEach((item,index)=>{
-          data.push({...item,key: `almost-there-${index}`})
+        almostThereRecipes.forEach((item, index) => {
+          data.push({ ...item, key: `almost-there-${index}` })
         })
       }
     }
@@ -244,24 +243,34 @@ export default function Matches(){
           onResetFilters={clearFilters}
         />
       </View>
-      {isLoading && flatListData.length === 0 ? (
-        <View style={styles.skeletons}>
-          {showSkeletons()}
-        </View>
-      ) : flatListData.length === 0 ? (
+      {flatListData.length === 0 ? (
         showEmpty()
       ) : (
         <FlatList
           data={flatListData}
           keyExtractor={(item) => item.key}
-          renderItem={({item}) => {
-            if (item.type === 'skeleton'){
+          renderItem={({ item }) => {
+            if (item.type === 'skeleton') {
               return item.component
             }
-            return showCard({item})
+            return showCard({ item })
           }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={pullRefresh} />
+          ListFooterComponent={
+            state.hasMoreRecipes && flatListData.length > 0 ? (
+              <TouchableOpacity
+                style={[styles.loadMoreBtn, state.recipesLoading && styles.loadMoreBtnLoading]}
+                onPress={handleLoadMore}
+                disabled={state.recipesLoading}>
+                {state.recipesLoading ? (
+                  <>
+                    <ActivityIndicator size="small" color="#007AFF" />
+                    <Text style={styles.loadMoreText}>Loading...</Text>
+                  </>
+                ) : (
+                  <Text style={styles.loadMoreText}>Load More Recipes</Text>
+                )}
+              </TouchableOpacity>
+            ) : null
           }
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -352,5 +361,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  loadMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 20,
+    gap: 8,
+  },
+  loadMoreBtnLoading: {
+    opacity: 0.6,
+  },
+  loadMoreText: {
+    color: '#007AFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
 })
