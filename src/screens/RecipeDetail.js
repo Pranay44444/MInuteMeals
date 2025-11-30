@@ -9,6 +9,7 @@ import { ListItem } from '../components/ListItem'
 import { Snackbar } from '../components/Snackbar'
 import { getRecipe, checkRecipeMatch, makePantrySet, getMissingForShopping } from '../services/recipes'
 import { convertIngredientsToIndianUnits } from '../utils/unitConverter'
+import { LoadingDots } from '../components/LoadingDots'
 
 export default function RecipeDetail() {
   const navigation = useNavigation()
@@ -99,10 +100,10 @@ export default function RecipeDetail() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.main}>
         <StatusBar barStyle="dark-content" backgroundColor="white" />
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading recipe...</Text>
+        <View style={styles.loading}>
+          <LoadingDots text="Loading recipe" color="#007AFF" />
         </View>
       </SafeAreaView>
     )
@@ -235,6 +236,22 @@ export default function RecipeDetail() {
 }
 
 const styles = StyleSheet.create({
+  snackContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    right: 16,
+    zIndex: 1000,
+  },
+  main: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: 'white',

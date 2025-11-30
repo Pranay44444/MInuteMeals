@@ -5,6 +5,7 @@ import { useStore, setCurrentRecipe, removeFromFavorites, addToFavorites } from 
 import { RecipeCard } from '../components/RecipeCard'
 import { EmptyState } from '../components/EmptyState'
 import { getRecipe, checkRecipeMatch, makePantrySet } from '../services/recipes'
+import { LoadingDots } from '../components/LoadingDots'
 
 export default function Favorites() {
   const navigation = useNavigation()
@@ -126,9 +127,11 @@ export default function Favorites() {
         <View style={styles.container}>
           {renderHeader()}
           {loading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading favorites...</Text>
+            <View style={styles.loading}>
+              <LoadingDots text="Loading favorites" color="#007AFF" />
             </View>
+          ) : recipes.length > 0 ? (
+            renderEmptyState()
           ) : (
             renderEmptyState()
           )}
@@ -162,6 +165,11 @@ const styles = StyleSheet.create({
   },
   recipeList: {
     paddingBottom: 20
+  },
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   loadingContainer: {
     flex: 1,

@@ -136,16 +136,43 @@ const callGemini = async (prompt) => {
     generationConfig: { responseMimeType: "application/json" }
   });
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text();
+  // Retry logic: try up to 3 times for server errors
+  const maxRetries = 3;
+  let lastError;
 
-  try {
-    return JSON.parse(text);
-  } catch (e) {
-    console.error("Failed to parse Gemini response:", text);
-    throw new Error("Invalid JSON response from Gemini");
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error("Failed to parse Gemini response:", text);
+        throw new Error("Invalid JSON response from Gemini");
+      }
+    } catch (error) {
+      lastError = error;
+
+      // Check if it's a retryable error (503 overloaded, 429 rate limit)
+      const isServerBusy = error.message?.includes('503') ||
+        error.message?.includes('overloaded');
+
+      // If server is busy and not last attempt, wait and retry
+      if (isServerBusy && attempt < maxRetries - 1) {
+        const waitTime = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
+        console.log(`Server busy, retrying in ${waitTime / 1000}s... (${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      // Otherwise, throw the error
+      throw error;
+    }
   }
+
+  throw lastError;
 }
 
 const LIGHT_RECIPE_SCHEMA = `
