@@ -56,12 +56,11 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 **Frontend:**
 - React Native + **Expo** (Android • iOS • Web)
 
-**Backend:**
-- **Node.js** (Express)
-- **DataBase:** MongoDB Atlas (Mongoose)
-- **Find Recipes:** Google Gemini 2.5 Flash Lite
-- **Scan Items:** Azure Vision
-- **Tools:** ngrok (Tunneling)
+**Future (Backend & CV):**
+- **Node.js** (Express)  
+- **DB:** MySQL (Prisma)  
+- Storage: S3/GCS for images  
+- **Scan Items(optional):** Google Vision / Azure Vision
 
 ---
 
