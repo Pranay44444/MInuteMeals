@@ -23,23 +23,18 @@ export default function Favorites() {
     setLoading(true)
     try {
       const pantrySet = makePantrySet(state.pantry.items)
-      const recipePromises = state.favorites.map(async (recipeId) => {
-        try {
-          const recipe = await getRecipe(recipeId)
-          if (recipe) {
-            const match = checkRecipeMatch(recipe, pantrySet)
-            return { recipe, match }
-          }
-          return null
-        } catch (error) {
-          return null
-        }
-      })
-      const results = await Promise.all(recipePromises)
-      const validRecipes = results.filter((result) => result !== null)
+      // Use stored recipe objects directly
+      const validRecipes = state.favorites.map(recipe => {
+        // Handle case where favorite might still be an ID (legacy data)
+        if (typeof recipe === 'string') return null
+
+        const match = checkRecipeMatch(recipe, pantrySet)
+        return { recipe, match }
+      }).filter(item => item !== null)
+
       setRecipes(validRecipes)
     } catch (error) {
-      Alert.alert('Error', 'Failed to load favorite recipes. Please try again.')
+      Alert.alert('Error', 'Failed to load favorite recipes.')
     } finally {
       setLoading(false)
     }
@@ -63,12 +58,12 @@ export default function Favorites() {
     navigation.navigate('RecipeDetail', { id: item.recipe.id })
   }, [dispatch, navigation])
 
-  const toggleFavorite = useCallback((recipeId) => {
-    const isFavorite = state.favorites.includes(recipeId)
+  const toggleFavorite = useCallback((recipe) => {
+    const isFavorite = state.favorites.some(r => r.id === recipe.id)
     if (isFavorite) {
-      dispatch(removeFromFavorites(recipeId))
+      dispatch(removeFromFavorites(recipe.id))
     } else {
-      dispatch(addToFavorites(recipeId))
+      dispatch(addToFavorites(recipe))
     }
   }, [state.favorites, dispatch])
 
@@ -76,9 +71,9 @@ export default function Favorites() {
     <RecipeCard
       recipe={item.recipe}
       match={item.match}
-      isFavorite={state.favorites.includes(item.recipe.id)}
+      isFavorite={state.favorites.some(r => r.id === item.recipe.id)}
       onPress={() => handleRecipePress(item)}
-      onToggleFavorite={toggleFavorite}
+      onToggleFavorite={() => toggleFavorite(item.recipe)}
       showMatchInfo={true} />
   )
 

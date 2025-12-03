@@ -8,6 +8,7 @@ import Matches from './src/screens/Matches'
 import Pantry from './src/screens/Pantry'
 import ShoppingList from './src/screens/ShoppingList'
 import Favorites from './src/screens/Favorites'
+import Settings from './src/screens/Settings'
 import RecipeDetail from './src/screens/RecipeDetail'
 import { PantryIcon } from './src/components/PantryIcon'
 
@@ -95,6 +96,15 @@ function MainTabs() {
         options={{
           tabBarIcon: ({ color }) => (
             <Ionicons name="heart" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={Settings}
+        options={{
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="settings" size={24} color={color} />
           ),
         }}
       />

@@ -92,11 +92,12 @@ export default function Matches() {
     navigation.navigate('RecipeDetail', { id: item.recipe.id })
   }, [dispatch])
 
-  const clickHeart = useCallback((recipeId) => {
-    if (state.favorites.includes(recipeId)) {
-      dispatch(removeFromFavorites(recipeId))
+  const clickHeart = useCallback((recipe) => {
+    const isFavorite = state.favorites.some(r => r.id === recipe.id)
+    if (isFavorite) {
+      dispatch(removeFromFavorites(recipe.id))
     } else {
-      dispatch(addToFavorites(recipeId))
+      dispatch(addToFavorites(recipe))
     }
   }, [state.favorites, dispatch])
 
@@ -171,9 +172,9 @@ export default function Matches() {
       <RecipeCard
         recipe={item.recipe}
         match={item.match}
-        isFavorite={state.favorites.includes(item.recipe.id)}
+        isFavorite={state.favorites.some(r => r.id === item.recipe.id)}
         onPress={() => clickRecipe(item)}
-        onToggleFavorite={() => clickHeart(item.recipe.id)}
+        onToggleFavorite={() => clickHeart(item.recipe)}
       />
     )
   }

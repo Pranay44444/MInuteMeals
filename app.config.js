@@ -10,7 +10,8 @@ export default {
     userInterfaceStyle: "light",
     newArchEnabled: true,
     plugins: [
-      "expo-router"
+      "expo-router",
+      "expo-web-browser"
     ],
     extra: {
       spoonacularApiKey: process.env.SPOONACULAR_API_KEY,

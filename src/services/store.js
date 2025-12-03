@@ -96,7 +96,8 @@ const reducer = (state, action) => {
         }
       }
     case 'ADD_TO_FAVORITES':
-      if (state.favorites.includes(action.payload)) {
+      // Check if already exists by ID
+      if (state.favorites.some(r => r.id === action.payload.id)) {
         return state
       }
       return {
@@ -106,7 +107,7 @@ const reducer = (state, action) => {
     case 'REMOVE_FROM_FAVORITES':
       return {
         ...state,
-        favorites: state.favorites.filter(id => id !== action.payload)
+        favorites: state.favorites.filter(r => r.id !== action.payload)
       }
     case 'SET_FAVORITES':
       return {
@@ -416,8 +417,12 @@ export const StoreProvider = ({ children }) => {
           load('favorites', []),
           load('shoppingList', [])
         ])
+
+        // Clean up legacy data: remove string IDs from favorites
+        const cleanFavorites = favorites.filter(item => typeof item !== 'string');
+
         dispatch(setPantry(pantry))
-        dispatch(setFavorites(favorites))
+        dispatch(setFavorites(cleanFavorites))
         dispatch(setShoppingList(shoppingList))
         const apiKeyAvailable = hasKey()
         dispatch(setApiKeyStatus(apiKeyAvailable))
@@ -440,6 +445,46 @@ export const StoreProvider = ({ children }) => {
   useEffect(() => {
     save('shoppingList', state.shoppingList)
   }, [state.shoppingList])
+
+  // Auto-sync to cloud when data changes (if signed in)
+  useEffect(() => {
+    const syncToCloudIfSignedIn = async () => {
+      try {
+        // Check if user is signed in
+        const userJson = await AsyncStorage.getItem('user');
+        const token = await AsyncStorage.getItem('authToken');
+
+        if (!userJson || !token) {
+          return; // Not signed in, skip cloud sync
+        }
+
+        // Import sync service dynamically to avoid circular dependency
+        const { syncToCloud } = await import('./sync');
+
+        // Sync to cloud with debounce (wait 2 seconds after last change)
+        const syncTimeout = setTimeout(async () => {
+          console.log('🔄 Auto-syncing to cloud...');
+          const result = await syncToCloud(
+            state.pantry.items,
+            state.favorites,
+            state.shoppingList,
+            state.filters
+          );
+          if (result.success) {
+            console.log('✅ Auto-sync successful');
+          } else {
+            console.log('❌ Auto-sync failed:', result.error || result.message || 'Unknown error');
+          }
+        }, 2000);
+
+        return () => clearTimeout(syncTimeout);
+      } catch (error) {
+        console.error('Auto-sync error:', error);
+      }
+    };
+
+    syncToCloudIfSignedIn();
+  }, [state.pantry.items, state.favorites, state.shoppingList, state.filters]);
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

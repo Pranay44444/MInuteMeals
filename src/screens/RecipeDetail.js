@@ -60,10 +60,11 @@ export default function RecipeDetail() {
   const toggleFavorite = useCallback(() => {
     if (!recipe) return
 
-    if (state.favorites.includes(recipe.id)) {
+    const isFavorite = state.favorites.some(r => r.id === recipe.id)
+    if (isFavorite) {
       dispatch(removeFromFavorites(recipe.id))
     } else {
-      dispatch(addToFavorites(recipe.id))
+      dispatch(addToFavorites(recipe))
     }
   }, [recipe, state.favorites, dispatch])
 
@@ -78,7 +79,7 @@ export default function RecipeDetail() {
     dispatch(addToShoppingList(shoppingItems))
     dispatch(showSnackbar(
       `Added ${shoppingItems.length} ingredients to shopping list`,
-      'VIEW LIST',
+      'View',
       () => navigation.navigate('Shopping')
     ))
   }, [match, recipe, dispatch, navigation])
