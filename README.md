@@ -48,14 +48,14 @@ Students, working professionals, hostels/PGs, busy families—anyone who wants *
 ---
 
 ## 7. Technology Stack
-**Now (JavaScript only):**
+**Frontend:**
 - React Native + **Expo** (Android • iOS • Web)
 
-**Future (Backend & CV):**
-- **Node.js** (Express)  
-- **DB:** MySQL (Prisma)  
-- Storage: S3/GCS for images  
-- **Scan Items(optional):** Google Vision / Azure Vision
+**Backend:**
+- **Node.js** (Express)
+- **DB:** MongoDB Atlas (Mongoose)
+- **AI:** Google Gemini 2.5 Flash Lite
+- **Tools:** ngrok (Tunneling)
 
 ---
 
