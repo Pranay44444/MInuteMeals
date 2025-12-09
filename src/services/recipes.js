@@ -13,6 +13,30 @@ const cleanName = (name) => {
     .substring(0, 100)
 }
 
+const sanitizeIngredients = (ingredients) => {
+  if (!Array.isArray(ingredients)) return []
+  return ingredients.map(ing => {
+    // Default to required=true unless explicitly optional
+    // This prevents "Noodles" in "Noodle Bowl" from being optional.
+    const nameLower = ing.name.toLowerCase()
+    const isExplicitlyOptional =
+      nameLower.includes('optional') ||
+      nameLower.includes('garnish') ||
+      nameLower.includes('to taste') ||
+      ing.required === false;
+
+    // However, we trust the AI *only* if it says optional AND the name confirms it.
+    // If the name looks like a main item (no 'optional' kw), we FORCE required=true.
+    // This overrides AI hallucinated "optional" flags on main items.
+    const isActuallyOptional = nameLower.includes('optional') || nameLower.includes('garnish') || nameLower.includes('to taste')
+
+    return {
+      ...ing,
+      required: !isActuallyOptional
+    }
+  })
+}
+
 export const normalizeIngredient = (name) => {
   const cleaned = cleanName(name)
   if (!cleaned) {
@@ -35,16 +59,18 @@ export const makePantrySet = (items) => {
 
 const basicItems = new Set([
   'salt', 'water', 'oil', 'pepper', 'sugar', 'black pepper', 'olive oil',
-  'vegetable oil', 'sea salt', 'table salt', 'white sugar', 'brown sugar'
+  'vegetable oil', 'sea salt', 'table salt', 'white sugar', 'brown sugar',
+  'extra virgin olive oil', 'kosher salt', 'cooking oil', 'canola oil',
+  'coarse salt', 'fine salt', 'ground black pepper', 'cracked black pepper'
 ])
 
 const isBasic = (name) => {
   const normal = normalizeIngredient(name)
-  return basicItems.has(normal) ||
-    Array.from(basicItems).some(basic => normal.includes(basic))
+  return basicItems.has(normal)
 }
 
 export const checkRecipeMatch = (recipe, pantrySet) => {
+  // ... (unchanged)
   if (!recipe.ingredients || !Array.isArray(recipe.ingredients)) {
     return {
       cookNow: false,
@@ -54,38 +80,62 @@ export const checkRecipeMatch = (recipe, pantrySet) => {
       matchedIngredients: []
     }
   }
-  const needed = recipe.ingredients.filter(ing => ing.required !== false)
+  /* 
+    FIX: Iterate ALL ingredients, not just required ones. 
+    This ensures Basic items (Salt, Oil) are marked as 'Matched' (Green) even if the AI marked them as optional.
+    It also allows us to show 'Green' for optional items we happen to have.
+  */
   const missing = []
   const matched = []
   let haveCount = 0
-  needed.forEach((item) => {
+
+  // Calculate total needed (required only) for percentage stats
+  const requiredIngredients = recipe.ingredients.filter(ing => ing.required !== false)
+
+  recipe.ingredients.forEach((item) => {
     const normal = normalizeIngredient(item.name)
+    let isFound = false
+
+    // Check 1: Is it Basic?
     if (isBasic(item.name)) {
-      haveCount++
-      matched.push(item)
-      return
+      isFound = true
     }
-    const hasIt = pantrySet.has(normal) ||
-      Array.from(pantrySet).some(pantryItem =>
-        pantryItem.includes(normal) || normal.includes(pantryItem)
-      )
-    if (hasIt) {
-      haveCount++
+    // Check 2: Is it in Pantry?
+    else {
+      // Robust check: Exact match or fuzzy match
+      isFound = pantrySet.has(normal) ||
+        Array.from(pantrySet).some(pantryItem =>
+          pantryItem.includes(normal) || normal.includes(pantryItem)
+        )
+    }
+
+    if (isFound) {
       matched.push(item)
+      // Only increment count if it was required (to keep percentage logic consistent with 'needed')
+      // OR we can just count raw items. Let's stick to counting matched required items for percentage.
+      if (item.required !== false) {
+        haveCount++
+      }
     } else {
-      missing.push(item.name)
+      // Not found
+      if (item.required !== false) {
+        missing.push(item.name)
+      }
     }
   })
+
+  // Recalculate stats based on Required items
   const missingCount = missing.length
-  const matchPercent = needed.length > 0
-    ? Math.round((haveCount / needed.length) * 100)
+  const matchPercent = requiredIngredients.length > 0
+    ? Math.round((haveCount / requiredIngredients.length) * 100)
     : 0
   const canCook = missingCount === 0
+
   return {
     cookNow: canCook,
     missingCount,
     matchedCount: haveCount,
-    totalIngredients: needed.length,
+    totalIngredients: requiredIngredients.length,
     matchPercentage: matchPercent,
     missingIngredients: missing,
     matchedIngredients: matched
@@ -97,8 +147,8 @@ export const filterRecipes = (recipes, filters) => {
     return []
   }
   return recipes.filter(recipe => {
-    // Fix: Check for undefined as well, or use loose inequality != null
-    if (filters.isVegetarian !== undefined && filters.isVegetarian !== null && recipe.isVeg !== filters.isVegetarian) {
+    // FIX: Standardized property isVegetarian
+    if (filters.isVegetarian !== undefined && filters.isVegetarian !== null && recipe.isVegetarian !== filters.isVegetarian) {
       return false
     }
     if (filters.maxTime && recipe.timeMinutes > filters.maxTime) {
@@ -183,7 +233,7 @@ const LIGHT_RECIPE_SCHEMA = `
       "title": "recipe name",
       "image": null,
       "timeMinutes": number (cooking time in minutes),
-      "is Vegetarian": boolean (REQUIRED - true if vegetarian, false if contains meat/fish/poultry),
+      "isVegetarian": boolean (REQUIRED - true if vegetarian, false if contains meat/fish/poultry),
       "cuisine": "string (e.g., Italian, Asian, Mexican)",
       "difficulty": "easy|medium|hard",
       "ingredients": [
@@ -207,7 +257,7 @@ const RECIPE_SCHEMA = `
       "title": "string",
       "image": null,
       "timeMinutes": number,
-      "isVeg": boolean,
+      "isVegetarian": boolean,
       "cuisine": "string",
       "difficulty": "easy" | "medium" | "hard",
       "ingredients": [
@@ -240,6 +290,8 @@ export const findRecipes = async (ingredients, filters = {}, options = {}) => {
       Generate up to ${limit} different creative recipes using these ingredients: ${ingredientList}.
       Try to use as many of the provided ingredients as possible, but you can add common pantry items (oil, salt, spices, etc.).
       
+      CRITICAL: When generating recipe summaries, you must output the FULL ingredient list (min 5+ items for main dishes). Include ALL ingredients, even common pantry items like oil, salt, pepper, water, and spices. Do not generate simplified 2-ingredient summaries. You will be penalized for omitting ingredients.
+      
       IMPORTANT: Generate ${limit} recipes if possible. If fewer recipes are feasible with these ingredients, return all available recipes (minimum 1, maximum ${limit}).
       
       Response must be a JSON object matching this schema:
@@ -247,13 +299,13 @@ export const findRecipes = async (ingredients, filters = {}, options = {}) => {
     `;
 
     if (filters.isVegetarian) {
-      prompt += "\nEnsure all recipes are Vegetarian.";
+      prompt += "\\nEnsure all recipes are Vegetarian.";
     }
     if (filters.maxTime) {
-      prompt += `\nEnsure all recipes take less than ${filters.maxTime} minutes.`;
+      prompt += `\\nEnsure all recipes take less than ${filters.maxTime} minutes.`;
     }
     if (filters.difficulty) {
-      prompt += `\nEnsure all recipes are ${filters.difficulty} difficulty.`;
+      prompt += `\\nEnsure all recipes are ${filters.difficulty} difficulty.`;
     }
 
     const data = await callGemini(prompt);
@@ -262,7 +314,10 @@ export const findRecipes = async (ingredients, filters = {}, options = {}) => {
     const recipes = data.recipes.map((r, index) => ({
       ...r,
       id: r.id || `gemini_${Date.now()}_${index}`,
-      image: null // Gemini doesn't provide images yet
+      image: null, // Gemini doesn't provide images yet
+      // Standardize isVegetarian
+      isVegetarian: r.isVegetarian ?? r.isVeg ?? r['is Vegetarian'] ?? false,
+      ingredients: sanitizeIngredients(r.ingredients)
     }));
 
     const filtered = filterRecipes(recipes, filters);
@@ -293,10 +348,10 @@ export const getSimpleRecipes = async (filters = {}, options = {}) => {
     `;
 
     if (filters.isVegetarian) {
-      prompt += "\nEnsure all recipes are Vegetarian.";
+      prompt += "\\nEnsure all recipes are Vegetarian.";
     }
     if (filters.searchQuery) {
-      prompt += `\nRecipes should be related to: "${filters.searchQuery}"`;
+      prompt += `\\nRecipes should be related to: "${filters.searchQuery}"`;
     }
 
     const data = await callGemini(prompt);
@@ -304,7 +359,8 @@ export const getSimpleRecipes = async (filters = {}, options = {}) => {
     const recipes = data.recipes.map((r, index) => ({
       ...r,
       id: r.id || `gemini_simple_${Date.now()}_${index}`,
-      image: null
+      image: null,
+      isVegetarian: r.isVegetarian ?? r.isVeg ?? r['is Vegetarian'] ?? false, // Standardize
     }));
 
     const filtered = filterRecipes(recipes, filters);
@@ -318,7 +374,7 @@ export const getSimpleRecipes = async (filters = {}, options = {}) => {
   }
 }
 
-export const getRecipe = async (id) => {
+export const getRecipe = async (id, contextRecipe = null) => {
   const useAPI = hasKey() || process.env.GEMINI_API_KEY
 
   if (!useAPI) {
@@ -326,48 +382,86 @@ export const getRecipe = async (id) => {
   }
 
   try {
-    // Since we don't have a database, we ask Gemini to generate the recipe details based on the ID 
-    // (assuming ID might be the title or we just ask for a recipe with that specific ID/Title context if we had it).
-    // However, typically `getRecipe` is called with an ID from a previous search. 
-    // If we can't persist, we might need to re-generate or rely on the caller passing data.
-    // BUT, for this migration, let's assume we can generate a recipe if we have a title-like ID, 
-    // or just generate a "best guess" if it's a numeric ID we don't know (which shouldn't happen if we control the IDs).
+    let prompt;
 
-    // Strategy: If ID looks like a title (or we just treat it as a request), ask for it.
-    // If it's a random string, we might fail. 
-    // Let's assume the ID passed here is actually the Title or a specific identifier we generated.
-    // For robustness, let's ask Gemini to "retrieve or generate" a recipe with this ID/Title.
+    if (contextRecipe && contextRecipe.ingredients) {
+      // STRICT CONSISTENCY MODE
+      // We have the "Lite" recipe. We must NOT hallucinate new ingredients that invalidate the user's "Ready to Cook" status.
+      const ingredientList = contextRecipe.ingredients.map(i => `${i.qty} ${i.unit} ${i.name}`).join(', ');
 
-    // NOTE: In a real app without DB, passing the whole recipe object is better. 
-    // But to support the interface `getRecipe(id)`:
-
-    let prompt = `
-      Generate a detailed recipe for a dish with the identifier or title: "${id}".
-      If it's an ID you generated previously, try to reconstruct the recipe.
-      If it's a generic request, generate a high-quality recipe matching that name/context.
-      
-      Return ONLY valid JSON for a SINGLE recipe object (not an array) in this format:
-      {
-        "id": "${id}",
-        "title": "string",
-        "image": null,
-        "timeMinutes": number,
-        "isVeg": boolean,
-        "cuisine": "string",
-        "difficulty": "easy" | "medium" | "hard",
-        "ingredients": [
-          {
-            "name": "string",
-            "qty": "string",
-            "unit": "string",
-            "required": boolean
-          }
-        ],
-        "steps": ["string"]
-      }
-    `;
+      prompt = `
+        You are a consistent recipe data engine.
+        I have a recipe summary with these EXACT ingredients:
+        ${ingredientList}
+        
+        Generate the detailed steps and metadata for this recipe.
+        
+        CRITICAL RULES:
+        1. You MUST use the exact ingredient list provided above.
+        2. ABSOLUTE PROHIBITION: You CANNOT add new required ingredients (like meat, veg, dairy, canned goods) that are not listed above.
+        3. If the recipe typically requires more ingredients (e.g. "Chicken Parmesan" needs cheese but you only have Chicken and Tomato), you MUST MODIFY the recipe to work with what you have (e.g. "Simple Tomato Chicken"). DO NOT Add missing ingredients.
+        4. You MAY add "basic" pantry items (Salt, Pepper, Water, Oil, Sugar) ONLY if strictly necessary.
+        
+        Return ONLY valid JSON for a SINGLE recipe object:
+        {
+          "id": "${id}",
+          "title": "${contextRecipe.title || 'Recipe'}",
+          "image": null,
+          "timeMinutes": number,
+          "isVegetarian": boolean,
+          "cuisine": "string",
+          "difficulty": "string",
+          "ingredients": [
+            { "name": "string", "qty": "string", "unit": "string", "required": boolean }
+             // These should match the input list closely. DO NOT hallucinate new main ingredients.
+          ],
+          "steps": ["string", "string"]
+        }
+      `;
+    } else {
+      // Fallback to loose generation if no context (rare for our app flow)
+      prompt = `
+        Generate a detailed recipe for a dish with the identifier or title: "${id}".
+        Return ONLY valid JSON for a SINGLE recipe object (not an array) in this format:
+        {
+          "id": "${id}",
+          "title": "string",
+          "image": null,
+          "timeMinutes": number,
+          "isVegetarian": boolean,
+          "cuisine": "string",
+          "difficulty": "easy" | "medium" | "hard",
+          "ingredients": [
+            {
+              "name": "string",
+              "qty": "string",
+              "unit": "string",
+              "required": boolean
+            }
+          ],
+          "steps": ["string"]
+        }
+      `;
+    }
 
     const data = await callGemini(prompt);
+
+    // FORCE CONSISTENCY:
+    // If we have a context recipe, we MUST return the SAME ingredient names/types 
+    // to preserve the "Cook Ready" status. 
+    // The AI might subtly rename "Pasta" to "Spaghetti", breaking the match.
+    // We overwrite the AI's ingredients with our source of truth.
+    if (contextRecipe && contextRecipe.ingredients) {
+      // We keep the AI's steps, time, etc., but force the Core Identity (Title + Ingredients)
+      // to match what the user clicked on.
+      data.title = contextRecipe.title || data.title;
+      data.ingredients = contextRecipe.ingredients;
+      data.id = contextRecipe.id; // Ensure ID matches
+    }
+
+    data.ingredients = sanitizeIngredients(data.ingredients);
+    // Standardize
+    data.isVegetarian = data.isVegetarian ?? data.isVeg ?? data['is Vegetarian'] ?? false;
     return data; // Expecting single object
   } catch (error) {
     console.error("Gemini API error (getRecipe):", error);
@@ -445,9 +539,9 @@ export const getMissingForShopping = (recipeMatch, recipeTitle = '', recipeIngre
     }
   })
 
-  const nonBasic = missingItems.filter(
-    item => !isBasic(item.name)
-  )
-  return makeShoppingItems(nonBasic, recipeTitle)
+  // The checkRecipeMatch logic already puts basic items into 'matched' (assumed owned).
+  // So 'missing' list only contains non-basic items. 
+  // We return all of them.
+  return makeShoppingItems(missingItems, recipeTitle)
 }
 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { hasKey } from '../utils/env'
+import { checkRecipeMatch, makePantrySet } from './recipes'
 
 const initialState = {
   pantry: { items: [], lastUpdated: null },
@@ -56,14 +57,47 @@ const mergeItems = (items) => {
     if (!item || !item.name) {
       return
     }
-    const key = item.name.toLowerCase()
+    // Use the same normalization as recipes to ensure consistent deduplication
+    const key = item.name.toLowerCase().trim()
+
     if (merged[key]) {
-      merged[key].quantity += item.quantity || 1
+      // Item exists. If the new item has a specific quantity, maybe we should update it?
+      // For now, let's keep the existing one if it has a quantity, or overwrite if the new one does.
+      // Prioritize the one with more detail.
+      if (item.qty && !merged[key].qty) {
+        merged[key] = { ...item }
+      }
+      // If both have qty, we don't sum strings (e.g. "1 cup" + "2 tbsp"). 
+      // We just keep the existing one to prevent duplicates.
     } else {
       merged[key] = { ...item }
     }
   })
   return Object.values(merged)
+}
+
+const recalculateMatches = (state, newPantryItems) => {
+  if (!state.generatedRecipes || state.generatedRecipes.length === 0) {
+    return state.generatedRecipes
+  }
+  const pantrySet = makePantrySet(newPantryItems)
+  return state.generatedRecipes.map(item => {
+    // Ensure we are working with the flat recipe object
+    // If 'item' is a wrapper {recipe: ...}, extract it. Otherwise use item.
+    // This handles both cases to be safe.
+    const recipeObj = item.recipe || item
+
+    // Recalculate match
+    const match = checkRecipeMatch(recipeObj, pantrySet)
+
+    // Return the flat recipe object with the updated match attached directly to it
+    // This preserves the structure expected by Matches.js (which maps over ingredients)
+    // while updating the match state.
+    return {
+      ...recipeObj,
+      match: match
+    }
+  })
 }
 
 const reducer = (state, action) => {
@@ -72,28 +106,34 @@ const reducer = (state, action) => {
       if (state.pantry.items.includes(action.payload)) {
         return state
       }
+      const pItemsAdd = [...state.pantry.items, action.payload]
       return {
         ...state,
         pantry: {
-          items: [...state.pantry.items, action.payload],
+          items: pItemsAdd,
           lastUpdated: Date.now()
-        }
+        },
+        generatedRecipes: recalculateMatches(state, pItemsAdd)
       }
     case 'REMOVE_FROM_PANTRY':
+      const pItemsRem = state.pantry.items.filter(item => item !== action.payload)
       return {
         ...state,
         pantry: {
-          items: state.pantry.items.filter(item => item !== action.payload),
+          items: pItemsRem,
           lastUpdated: Date.now()
-        }
+        },
+        generatedRecipes: recalculateMatches(state, pItemsRem)
       }
     case 'SET_PANTRY':
+      const pItemsSet = Array.isArray(action.payload) ? action.payload : action.payload.items || []
       return {
         ...state,
         pantry: {
-          items: Array.isArray(action.payload) ? action.payload : action.payload.items || [],
+          items: pItemsSet,
           lastUpdated: Date.now()
-        }
+        },
+        generatedRecipes: recalculateMatches(state, pItemsSet)
       }
     case 'ADD_TO_FAVORITES':
       // Check if already exists by ID
@@ -144,13 +184,15 @@ const reducer = (state, action) => {
       const boughtItems = state.shoppingList.filter(item => item.bought)
       const newPantryItems = boughtItems.map(item => item.name)
       const remainingShoppingItems = state.shoppingList.filter(item => !item.bought)
+      const finalPantryItems = [...new Set([...state.pantry.items, ...newPantryItems])]
       return {
         ...state,
         pantry: {
-          items: [...new Set([...state.pantry.items, ...newPantryItems])],
+          items: finalPantryItems,
           lastUpdated: Date.now()
         },
-        shoppingList: remainingShoppingItems
+        shoppingList: remainingShoppingItems,
+        generatedRecipes: recalculateMatches(state, finalPantryItems)
       }
     case 'SET_SHOPPING_LIST':
       return {
@@ -229,6 +271,13 @@ const reducer = (state, action) => {
         ...state,
         generatedRecipes: [...state.generatedRecipes, ...action.payload],
         recipesError: null
+      }
+    case 'UPDATE_GENERATED_RECIPE':
+      return {
+        ...state,
+        generatedRecipes: state.generatedRecipes.map(r =>
+          r.id === action.payload.id ? action.payload : r
+        )
       }
     case 'SET_RECIPES_LOADING':
       return {
@@ -380,6 +429,11 @@ export const setGeneratedRecipes = (recipes) => ({
 export const appendGeneratedRecipes = (recipes) => ({
   type: 'APPEND_GENERATED_RECIPES',
   payload: recipes
+})
+
+export const updateGeneratedRecipe = (recipe) => ({
+  type: 'UPDATE_GENERATED_RECIPE',
+  payload: recipe
 })
 
 export const setRecipesLoading = (isLoading) => ({

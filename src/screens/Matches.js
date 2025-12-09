@@ -188,7 +188,7 @@ export default function Matches() {
       return data
     } else {
       const cookNowRecipes = recipesWithMatches
-        .filter(item => item.match.missingCount === 0)
+        .filter(item => item.match.missingCount === 0 && item.match.totalIngredients > 3)
         .sort((a, b) => b.match.matchedCount - a.match.matchedCount)
       const almostThereRecipes = recipesWithMatches
         .filter(item =>

@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, StatusBar, TouchableOpacity, Alert,
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useNavigation, useRoute } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
-import { useStore, addToFavorites, removeFromFavorites, addToShoppingList, showSnackbar, hideSnackbar } from '../services/store'
+import { useStore, addToFavorites, removeFromFavorites, addToShoppingList, showSnackbar, hideSnackbar, updateGeneratedRecipe } from '../services/store'
 import { Badge } from '../components/Badge'
 import { ListItem } from '../components/ListItem'
 import { Snackbar } from '../components/Snackbar'
@@ -31,7 +31,7 @@ export default function RecipeDetail() {
         setRecipe(state.currentRecipe.recipe)
         setMatch(state.currentRecipe.match)
       } else {
-        const fetchedRecipe = await getRecipe(id)
+        const fetchedRecipe = await getRecipe(id, state.currentRecipe?.recipe)
         if (fetchedRecipe) {
           // Convert ingredients to Indian units
           const convertedRecipe = {
@@ -43,6 +43,16 @@ export default function RecipeDetail() {
           const pantrySet = makePantrySet(state.pantry.items)
           const recipeMatch = checkRecipeMatch(convertedRecipe, pantrySet)
           setMatch(recipeMatch)
+
+          // Sync back to global list so Matches screen updates with full details
+          // IMPORTANT: dispatch the RAW fetchedRecipe (unconverted). 
+          // Matches.js does its own conversion on render. 
+          // If we dispatch convertedRecipe, Matches.js converts it AGAIN, corrupting the data.
+          // We also attach the match object here so the store has the correct structure immediately.
+          dispatch(updateGeneratedRecipe({
+            ...fetchedRecipe,
+            match: recipeMatch
+          }))
         }
       }
     } catch (error) {
@@ -133,7 +143,11 @@ export default function RecipeDetail() {
       leftIcon={
         <View style={[
           styles.ingredientDot,
-          { backgroundColor: match?.matchedIngredients.includes(item) ? '#28a745' : '#ffc107' }
+          {
+            backgroundColor: match?.matchedIngredients.some(i =>
+              i.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+            ) ? '#28a745' : '#ffc107'
+          }
         ]} />
       }
       style={styles.ingredientItem}
