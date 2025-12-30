@@ -139,7 +139,7 @@ export default function RecipeDetail() {
     <ListItem
       key={index}
       title={item.name}
-      subtitle={item.qty && item.unit ? `${item.qty} ${item.unit}` : undefined}
+      subtitle={item.qty ? (item.unit ? `${item.qty} ${item.unit}` : `${item.qty}`) : undefined}
       leftIcon={
         <View style={[
           styles.ingredientDot,
