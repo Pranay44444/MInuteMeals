@@ -133,7 +133,7 @@ export default function RecipeDetail() {
     )
   }
 
-  const isFavorite = state.favorites.includes(recipe.id)
+  const isFavorite = state.favorites.some(r => r.id === recipe.id)
 
   const renderIngredient = ({ item, index }) => (
     <ListItem
