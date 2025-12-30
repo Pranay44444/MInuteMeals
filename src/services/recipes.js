@@ -13,6 +13,15 @@ const cleanName = (name) => {
     .substring(0, 100)
 }
 
+const normalizeBoolean = (val) => {
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'string') {
+    const lower = val.toLowerCase().trim();
+    return lower === 'true' || lower === 'yes';
+  }
+  return !!val;
+}
+
 const sanitizeIngredients = (ingredients) => {
   if (!Array.isArray(ingredients)) return []
   return ingredients.map(ing => {
@@ -316,7 +325,7 @@ export const findRecipes = async (ingredients, filters = {}, options = {}) => {
       id: r.id || `gemini_${Date.now()}_${index}`,
       image: null, // Gemini doesn't provide images yet
       // Standardize isVegetarian
-      isVegetarian: r.isVegetarian ?? r.isVeg ?? r['is Vegetarian'] ?? false,
+      isVegetarian: normalizeBoolean(r.isVegetarian ?? r.isVeg ?? r['is Vegetarian'] ?? false),
       ingredients: sanitizeIngredients(r.ingredients)
     }));
 
@@ -360,7 +369,7 @@ export const getSimpleRecipes = async (filters = {}, options = {}) => {
       ...r,
       id: r.id || `gemini_simple_${Date.now()}_${index}`,
       image: null,
-      isVegetarian: r.isVegetarian ?? r.isVeg ?? r['is Vegetarian'] ?? false, // Standardize
+      isVegetarian: normalizeBoolean(r.isVegetarian ?? r.isVeg ?? r['is Vegetarian'] ?? false), // Standardize
     }));
 
     const filtered = filterRecipes(recipes, filters);
@@ -461,7 +470,7 @@ export const getRecipe = async (id, contextRecipe = null) => {
 
     data.ingredients = sanitizeIngredients(data.ingredients);
     // Standardize
-    data.isVegetarian = data.isVegetarian ?? data.isVeg ?? data['is Vegetarian'] ?? false;
+    data.isVegetarian = normalizeBoolean(data.isVegetarian ?? data.isVeg ?? data['is Vegetarian'] ?? false);
     return data; // Expecting single object
   } catch (error) {
     console.error("Gemini API error (getRecipe):", error);

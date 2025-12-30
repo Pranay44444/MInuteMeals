@@ -193,7 +193,7 @@ export default function Matches() {
       const almostThereRecipes = recipesWithMatches
         .filter(item =>
           item.match.missingCount > 0 &&
-          item.match.missingCount <= 5 &&
+          item.match.missingCount <= 15 &&
           item.match.matchedCount > 0
         )
         .sort((a, b) => {
