@@ -1,33 +1,34 @@
 import React from 'react'
-import {View,Text,TouchableOpacity,StyleSheet} from 'react-native'
-import {Ionicons} from '@expo/vector-icons'
-import {Badge} from './Badge'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import { Badge } from './Badge'
 
-export const RecipeCard = ({recipe,match,isFavorite = false,onPress,onToggleFavorite,showMatchInfo = true})=>{
-  const clickHeart = (e)=>{
+export const RecipeCard = ({ recipe, match, isFavorite = false, onPress, onToggleFavorite, showMatchInfo = true }) => {
+  const clickHeart = (e) => {
     e.stopPropagation()
-    if (onToggleFavorite){
+    if (onToggleFavorite) {
       onToggleFavorite(recipe.id)
     }
   }
-  const getTime = ()=>{
-    if (!recipe.timeMinutes){
-      return 'Time unknown'}
-    if (recipe.timeMinutes < 60){
+  const getTime = () => {
+    if (!recipe.timeMinutes) {
+      return 'Time unknown'
+    }
+    if (recipe.timeMinutes < 60) {
       return `${recipe.timeMinutes}min`
     }
-    const hours = Math.floor(recipe.timeMinutes/60)
-    const minutes = recipe.timeMinutes%60
+    const hours = Math.floor(recipe.timeMinutes / 60)
+    const minutes = recipe.timeMinutes % 60
     return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`
   }
   const getDifficultyColor = () => {
-    if (recipe.difficulty === 'easy'){
+    if (recipe.difficulty === 'easy') {
       return '#28a745'
     }
-    if (recipe.difficulty === 'medium'){
+    if (recipe.difficulty === 'medium') {
       return '#ffc107'
     }
-    if (recipe.difficulty === 'hard'){
+    if (recipe.difficulty === 'hard') {
       return '#dc3545'
     }
     return '#6c757d'
@@ -40,18 +41,22 @@ export const RecipeCard = ({recipe,match,isFavorite = false,onPress,onToggleFavo
   return (
     <TouchableOpacity style={styles.main} onPress={onPress}>
       <View style={styles.box}>
-        <TouchableOpacity style={styles.heart} onPress={clickHeart}>
-          <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={24} color={isFavorite ? "#007AFF" : "#ccc"}/>
+        <TouchableOpacity
+          style={styles.heart}
+          onPress={clickHeart}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
+          <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={24} color={isFavorite ? "#007AFF" : "#ccc"} />
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={2}>{recipe.title}</Text>
         <View style={styles.info}>
           <View style={styles.row}>
-            <Ionicons name="time-outline" size={14} color="#666"/>
+            <Ionicons name="time-outline" size={14} color="#666" />
             <Text style={styles.text}>{getTime()}</Text>
           </View>
           {hasDifficulty && (
             <View style={styles.row}>
-              <View style={[styles.dot,{backgroundColor: getDifficultyColor()}]}/>
+              <View style={[styles.dot, { backgroundColor: getDifficultyColor() }]} />
               <Text style={styles.text}>{recipe.difficulty}</Text>
             </View>
           )}
@@ -61,16 +66,16 @@ export const RecipeCard = ({recipe,match,isFavorite = false,onPress,onToggleFavo
             <Text style={styles.score}>{match.matchedCount}/{match.totalIngredients} ingredients</Text>
             <View style={styles.badges}>
               {canCookNow ? (
-                <Badge text="Cook Now!" variant="cookNow" size="small" style={styles.rightBadge}/>
+                <Badge text="Cook Now!" variant="cookNow" size="small" style={styles.rightBadge} />
               ) : (
                 <View style={styles.missing}>
-                  <Badge text={`${match.missingCount} missing`} variant="missing" size="small" style={styles.rightBadge}/>
+                  <Badge text={`${match.missingCount} missing`} variant="missing" size="small" style={styles.rightBadge} />
                   {hasMissingIngredients && (
                     <View style={styles.pills}>
-                      {match.topMissingIngredients.map((ingredient,index)=>(
+                      {match.topMissingIngredients.map((ingredient, index) => (
                         <View key={index} style={styles.pill}>
                           <Text style={styles.pillText}>
-                            {ingredient.name.length > 8 ? ingredient.name.substring(0,8) + '...' : ingredient.name}
+                            {ingredient.name.length > 8 ? ingredient.name.substring(0, 8) + '...' : ingredient.name}
                           </Text>
                         </View>
                       ))}
@@ -93,7 +98,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginVertical: 6,
     shadowColor: '#000',
-    shadowOffset: {width: 0,height: 2},
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
@@ -110,7 +115,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0,height: 1},
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
     elevation: 2

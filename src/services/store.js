@@ -531,12 +531,12 @@ export const StoreProvider = ({ children }) => {
                     return;
                 }
 
-                console.log('🔄 App Start: Pulling latest cloud data...');
+                console.log('[Sync] App Start: Pulling latest cloud data...');
                 const { getCloudData } = await import('./sync');
                 const cloudData = await getCloudData();
 
                 if (cloudData && cloudData.success !== false && !cloudData.error) {
-                    console.log('✅ App Start: Cloud data received. Populating local state...');
+                    console.log('[Sync] App Start: Cloud data received. Populating local state...');
 
                     // Load current local data to merge against
                     const [localPantry, localFavorites, localShopping] = await Promise.all([
@@ -553,13 +553,13 @@ export const StoreProvider = ({ children }) => {
 
                     if (isLocalEmpty) {
                         // RECOVERY MODE: Local is empty, adopt cloud data entirely
-                        console.log('📥 Local is empty. Adopting Cloud Data (Recovery Mode).');
+                        console.log('[Sync] Local is empty. Adopting Cloud Data (Recovery Mode).');
                         if (cloudData.pantry && Array.isArray(cloudData.pantry)) finalPantry = cloudData.pantry;
                         if (cloudData.favorites && Array.isArray(cloudData.favorites)) finalFavorites = cloudData.favorites;
                         if (cloudData.shoppingList && Array.isArray(cloudData.shoppingList)) finalShopping = cloudData.shoppingList;
                     } else {
                         // MERGE MODE: Both have data, merge carefully
-                        console.log('🔀 Merging cloud + local data.');
+                        console.log('[Sync] Merging cloud + local data.');
                         if (cloudData.pantry && Array.isArray(cloudData.pantry)) {
                             finalPantry = mergeStringArrays([...localPantry, ...cloudData.pantry]);
                         }
@@ -587,11 +587,11 @@ export const StoreProvider = ({ children }) => {
                     dispatch(setFavorites(finalFavorites));
                     dispatch(setShoppingList(finalShopping));
                 } else {
-                    console.log('⚠️ No cloud data or error. Using local state only.');
+                    console.log('[Sync] No cloud data or error. Using local state only.');
                 }
 
                 // UNLOCK GATEKEEPER
-                console.log('🔓 Sync Gatekeeper Unlocked (App Start).');
+                console.log('[Sync] Gatekeeper Unlocked (App Start).');
                 dispatch(setInitialSyncComplete(true));
 
             } catch (error) {
@@ -623,7 +623,7 @@ export const StoreProvider = ({ children }) => {
             try {
                 // GATEKEEPER CHECK: Do NOT push until initial sync is complete
                 if (!state.ui.isInitialSyncComplete) {
-                    console.log('🔒 Auto-sync blocked: Initial sync not complete.');
+                    console.log('[Sync] Auto-sync blocked: Initial sync not complete.');
                     return;
                 }
 
@@ -640,7 +640,7 @@ export const StoreProvider = ({ children }) => {
 
                 // Sync to cloud with debounce (wait 2 seconds after last change)
                 const syncTimeout = setTimeout(async () => {
-                    console.log('🔄 Auto-syncing to cloud...');
+                    console.log('[Sync] Auto-syncing to cloud...');
                     const result = await syncToCloud(
                         state.pantry.items,
                         state.favorites,
@@ -648,9 +648,9 @@ export const StoreProvider = ({ children }) => {
                         state.filters
                     );
                     if (result.success) {
-                        console.log('✅ Auto-sync successful');
+                        console.log('[Sync] Auto-sync successful');
                     } else {
-                        console.log('❌ Auto-sync failed:', result.error || result.message || 'Unknown error');
+                        console.log('[Sync] Auto-sync failed:', result.error || result.message || 'Unknown error');
                     }
                 }, 2000);
 

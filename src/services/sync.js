@@ -118,9 +118,9 @@ export const autoSync = async (pantry, favorites, shoppingList, filters) => {
     syncTimeout = setTimeout(async () => {
         const result = await syncToCloud(pantry, favorites, shoppingList, filters);
         if (result.success) {
-            console.log('✅ Auto-synced to cloud');
+            console.log('[Sync] Auto-synced to cloud');
         } else {
-            console.log('❌ Auto-sync failed:', result.error);
+            console.log('[Sync] Auto-sync failed:', result.error);
         }
     }, 2000);
 };

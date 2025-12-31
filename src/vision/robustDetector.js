@@ -1017,7 +1017,7 @@ function logFinalResult(stageLabel, results) {
         });
     }
     else {
-        console.log('\n❌ NO INGREDIENTS DETECTED');
+        console.log('\n[Vision] NO INGREDIENTS DETECTED');
     }
     console.log('╚═══════════════════════════════════════════╝\n');
 }
@@ -1427,17 +1427,17 @@ async function detectCore(imageBytes, endpoint, apiKey, meta) {
         // Area dominance applied, score these only
         const result = scoreCandidates(dominantCandidates);
         if (result.length > 0) {
-            console.log(`✅ Core result (area-dominant): ${result.map(r => r.name).join(', ')}`);
+            console.log(`[Vision] Core result (area-dominant): ${result.map(r => r.name).join(', ')}`);
             return result;
         }
     }
     // No area dominance, score all candidates
     const result = scoreCandidates(candidates);
     if (result.length > 0) {
-        console.log(`✅ Core result: ${result.map(r => r.name).join(', ')}`);
+        console.log(`[Vision] Core result: ${result.map(r => r.name).join(', ')}`);
         return result;
     }
-    console.log('⚠️  Core returned empty');
+    console.log('[Vision] Core returned empty');
     return [];
 }
 // ==================== STAGE 2: ENHANCEMENT LAYER ====================
@@ -1611,10 +1611,10 @@ async function detectIngredientsEnhanced(imageBytes, endpoint, apiKey, meta) {
     // Apply enhanced scoring
     const result = scoreEnhanced(candidates, response);
     if (result.length > 0) {
-        console.log(`✅ Enhanced result: ${result.map(r => r.name).join(', ')}`);
+        console.log(`[Vision] Enhanced result: ${result.map(r => r.name).join(', ')}`);
         return result;
     }
-    console.log('⚠️  Enhanced layer returned empty');
+    console.log('[Vision] Enhanced layer returned empty');
     return [];
 }
 // ==================== STAGE 3: FALLBACK GUARD ====================
@@ -1643,7 +1643,7 @@ async function fallbackGuard(imageBytes, endpoint, apiKey, meta) {
             }
         }
     }
-    console.log('❌ Fallback guard also returned empty');
+    console.log('[Vision] Fallback guard also returned empty');
     return [];
 }
 // ==================== MAIN API ====================
@@ -1673,7 +1673,7 @@ export async function detectIngredients(uriOrBytes) {
         const coreResult = await detectCore(imageBytes, endpoint, apiKey, coreMeta);
         // Check if core result is good enough (confidence ≥ 0.6)
         if (coreResult.length > 0 && coreResult[0].score >= CORE_CONFIDENCE_THRESHOLD) {
-            console.log(`✅ Core result accepted (confidence: ${coreResult[0].score.toFixed(2)} ≥ ${CORE_CONFIDENCE_THRESHOLD})`);
+            console.log(`[Vision] Core result accepted (confidence: ${coreResult[0].score.toFixed(2)} >= ${CORE_CONFIDENCE_THRESHOLD})`);
             // Apply non-veg resolution first (meat/fish/chicken etc.)
             let resolvedCore = applyNonVegResolution('Core', coreResult, coreMeta);
             // Check if this is a non-veg result
@@ -1692,7 +1692,7 @@ export async function detectIngredients(uriOrBytes) {
                 }
                 // If generic and failed to specialize, discard
                 if (isGenericVegLabel(resolvedCore[0].name)) {
-                    console.log('⚠️  Core result was generic and could not be specialized. Discarding.');
+                    console.log('[Vision] Core result was generic and could not be specialized. Discarding.');
                 } else {
                     logFinalResult('Core', resolvedCore);
                     return resolvedCore;
@@ -1735,7 +1735,7 @@ export async function detectIngredients(uriOrBytes) {
                 }
                 // If generic and failed to specialize, discard
                 if (isGenericVegLabel(resolvedEnhanced[0].name)) {
-                    console.log('⚠️  Enhanced result was generic and could not be specialized. Discarding.');
+                    console.log('[Vision] Enhanced result was generic and could not be specialized. Discarding.');
                 } else {
                     logFinalResult('Enhanced', resolvedEnhanced);
                     return resolvedEnhanced;
@@ -1756,7 +1756,7 @@ export async function detectIngredients(uriOrBytes) {
         }
         // ==================== STAGE 3: FALLBACK GUARD ====================
         // Both core and enhancement failed → last resort
-        console.log('⚠️  Enhancement also insufficient');
+        console.log('[Vision] Enhancement also insufficient');
         const fallbackMeta = createDetectionMeta();
         const fallbackResult = await fallbackGuard(imageBytes, endpoint, apiKey, fallbackMeta);
         // Apply non-veg resolution first
@@ -1782,7 +1782,7 @@ export async function detectIngredients(uriOrBytes) {
                 console.log('╚═══════════════════════════════════════════╝\n');
                 return vegFallback;
             }
-            console.log('\n❌ NO INGREDIENTS DETECTED');
+            console.log('\n[Vision] NO INGREDIENTS DETECTED');
             console.log('╚═══════════════════════════════════════════╝\n');
             return [];
         }
@@ -1802,8 +1802,8 @@ export async function detectIngredients(uriOrBytes) {
             }
             // If generic and failed to specialize, discard
             if (isGenericVegLabel(resolvedFallback[0].name)) {
-                console.log('⚠️  Fallback result was generic and could not be specialized. Discarding.');
-                console.log('\n❌ NO INGREDIENTS DETECTED');
+                console.log('[Vision] Fallback result was generic and could not be specialized. Discarding.');
+                console.log('\n[Vision] NO INGREDIENTS DETECTED');
                 console.log('╚═══════════════════════════════════════════╝\n');
                 return [];
             }

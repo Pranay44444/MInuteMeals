@@ -28,7 +28,7 @@ export default function Settings() {
 
                 // START CLOUD-FIRST RECOVERY
                 setSyncing(true);
-                console.log('☁️ 1. Signing In - pulling cloud data...');
+                console.log('[Sync] 1. Signing In - pulling cloud data...');
 
                 // 1. Force PULL from Cloud
                 const cloudData = await getCloudData();
@@ -40,21 +40,21 @@ export default function Settings() {
                 let didRestore = false;
 
                 if (cloudData && !cloudData.error) {
-                    console.log('✅ 2. Cloud data found. Processing recovery...');
+                    console.log('[Sync] 2. Cloud data found. Processing recovery...');
 
                     // CRITICAL: If Local is empty ( Fresh Install / Clear Data ), ADOPT Cloud Data directly.
                     // Otherwise, MERGE to be safe.
                     const isLocalEmpty = state.pantry.items.length === 0 && state.favorites.length === 0;
 
                     if (isLocalEmpty) {
-                        console.log('📥 Local is empty. Overwriting with Cloud Data (Recovery Mode).');
+                        console.log('[Sync] Local is empty. Overwriting with Cloud Data (Recovery Mode).');
                         if (cloudData.pantry) restoredPantry = cloudData.pantry;
                         if (cloudData.favorites) restoredFavorites = cloudData.favorites;
                         if (cloudData.shoppingList) restoredShopping = cloudData.shoppingList;
                         if (cloudData.filters) restoredFilters = cloudData.filters;
                         didRestore = true;
                     } else {
-                        console.log('🔀 Local has data. Merging Cloud + Local.');
+                        console.log('[Sync] Local has data. Merging Cloud + Local.');
                         // Merge Logic (Safe)
                         if (cloudData.pantry && Array.isArray(cloudData.pantry)) {
                             restoredPantry = mergeStringArrays([...restoredPantry, ...cloudData.pantry]);
@@ -84,15 +84,15 @@ export default function Settings() {
                     dispatch(setShoppingList(restoredShopping));
 
                 } else {
-                    console.log('⚠️ No cloud data found or error. Treating as new user.');
+                    console.log('[Sync] No cloud data found or error. Treating as new user.');
                 }
 
                 // UNLOCK GATEKEEPER: Now we have either recovered data or confirmed fresh user.
-                console.log('🔓 Sync Gatekeeper Unlocked (Sign In).');
+                console.log('[Sync] Gatekeeper Unlocked (Sign In).');
                 dispatch(setInitialSyncComplete(true));
 
                 // 5. FINAL SYNC (Push back to ensure consistency)
-                console.log('🔄 5. Finalizing Sync...');
+                console.log('[Sync] 5. Finalizing Sync...');
                 await syncToCloud(
                     restoredPantry,
                     restoredFavorites,
@@ -177,7 +177,7 @@ export default function Settings() {
                                     <Text style={styles.userName}>{user.name}</Text>
                                     <Text style={styles.userEmail}>{user.email}</Text>
                                     <Text style={styles.syncStatus}>
-                                        {syncing ? '🔄 Syncing...' : '✅ Auto-sync enabled'}
+                                        {syncing ? 'Syncing...' : 'Auto-sync enabled'}
                                     </Text>
                                 </View>
                             </View>
