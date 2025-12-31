@@ -61,8 +61,13 @@ export const getCloudData = async () => {
             }
         });
 
-        const data = await response.json();
-        return data;
+        const result = await response.json();
+        // UNWRAP: Backend returns { success: true, data: { pantry: ... } }
+        // We want { success: true, pantry: ... } for easier consumption
+        if (result.success && result.data) {
+            return { success: true, ...result.data };
+        }
+        return result;
     } catch (error) {
         console.error('Get cloud data error:', error);
         return { success: false, error: error.message };

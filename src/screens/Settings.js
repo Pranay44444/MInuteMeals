@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, StatusBar, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { signInWithGoogle, signOut, getCurrentUser, isSignedIn } from '../services/auth';
 import { syncToCloud, getCloudData } from '../services/sync';
-import { useStore } from '../services/store';
+import { useStore, setPantry, setFavorites, setShoppingList, mergeItems, setInitialSyncComplete, mergeStringArrays } from '../services/store';
 
 export default function Settings() {
     const [user, setUser] = useState(null);
     const [syncing, setSyncing] = useState(false);
-    const { state } = useStore();
+    const { state, dispatch } = useStore();
 
     useEffect(() => {
         checkUser();
@@ -25,33 +26,88 @@ export default function Settings() {
             if (result.success) {
                 setUser(result.user);
 
-                // Wait a moment for AsyncStorage data to load into state
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Debug: log what we're about to sync
-                console.log('📊 Data to sync:');
-                console.log('  Pantry:', JSON.stringify(state.pantry.items, null, 2));
-                console.log('  Favorites:', JSON.stringify(state.favorites, null, 2));
-                console.log('  Shopping List:', JSON.stringify(state.shoppingList, null, 2));
-                console.log('  Filters:', JSON.stringify(state.filters, null, 2));
-
-                // Automatically sync local data to cloud
+                // START CLOUD-FIRST RECOVERY
                 setSyncing(true);
-                const syncResult = await syncToCloud(
-                    state.pantry.items,
-                    state.favorites,
-                    state.shoppingList,
-                    state.filters
+                console.log('☁️ 1. Signing In - pulling cloud data...');
+
+                // 1. Force PULL from Cloud
+                const cloudData = await getCloudData();
+
+                let restoredPantry = state.pantry.items;
+                let restoredFavorites = state.favorites;
+                let restoredShopping = state.shoppingList;
+                let restoredFilters = state.filters;
+                let didRestore = false;
+
+                if (cloudData && !cloudData.error) {
+                    console.log('✅ 2. Cloud data found. Processing recovery...');
+
+                    // CRITICAL: If Local is empty ( Fresh Install / Clear Data ), ADOPT Cloud Data directly.
+                    // Otherwise, MERGE to be safe.
+                    const isLocalEmpty = state.pantry.items.length === 0 && state.favorites.length === 0;
+
+                    if (isLocalEmpty) {
+                        console.log('📥 Local is empty. Overwriting with Cloud Data (Recovery Mode).');
+                        if (cloudData.pantry) restoredPantry = cloudData.pantry;
+                        if (cloudData.favorites) restoredFavorites = cloudData.favorites;
+                        if (cloudData.shoppingList) restoredShopping = cloudData.shoppingList;
+                        if (cloudData.filters) restoredFilters = cloudData.filters;
+                        didRestore = true;
+                    } else {
+                        console.log('🔀 Local has data. Merging Cloud + Local.');
+                        // Merge Logic (Safe)
+                        if (cloudData.pantry && Array.isArray(cloudData.pantry)) {
+                            restoredPantry = mergeStringArrays([...restoredPantry, ...cloudData.pantry]);
+                        }
+                        if (cloudData.favorites && Array.isArray(cloudData.favorites)) {
+                            const distinctFavs = {};
+                            [...restoredFavorites, ...cloudData.favorites].forEach(f => {
+                                if (f && f.id) distinctFavs[f.id] = f;
+                            });
+                            restoredFavorites = Object.values(distinctFavs);
+                        }
+                        if (cloudData.shoppingList && Array.isArray(cloudData.shoppingList)) {
+                            restoredShopping = mergeItems([...restoredShopping, ...cloudData.shoppingList]);
+                        }
+                    }
+
+                    // 3. PERSIST to Disk (AsyncStorage) - Source of Truth
+                    await AsyncStorage.multiSet([
+                        ['pantry', JSON.stringify(restoredPantry)],
+                        ['favorites', JSON.stringify(restoredFavorites)],
+                        ['shoppingList', JSON.stringify(restoredShopping)]
+                    ]);
+
+                    // 4. UPDATE UI (Store)
+                    dispatch(setPantry(restoredPantry));
+                    dispatch(setFavorites(restoredFavorites));
+                    dispatch(setShoppingList(restoredShopping));
+
+                } else {
+                    console.log('⚠️ No cloud data found or error. Treating as new user.');
+                }
+
+                // UNLOCK GATEKEEPER: Now we have either recovered data or confirmed fresh user.
+                console.log('🔓 Sync Gatekeeper Unlocked (Sign In).');
+                dispatch(setInitialSyncComplete(true));
+
+                // 5. FINAL SYNC (Push back to ensure consistency)
+                console.log('🔄 5. Finalizing Sync...');
+                await syncToCloud(
+                    restoredPantry,
+                    restoredFavorites,
+                    restoredShopping,
+                    restoredFilters
                 );
+
                 setSyncing(false);
 
-                console.log('✅ Sync result:', syncResult);
-
-                if (syncResult.success) {
-                    Alert.alert('Success', `Signed in and backed up ${state.pantry.items.length} pantry items, ${state.favorites.length} favorites, ${state.shoppingList.length} shopping items!`);
+                if (didRestore) {
+                    Alert.alert('Welcome Back!', `Recovered items from cloud:\n• ${restoredPantry.length} Pantry Items\n• ${restoredFavorites.length} Favorites\n• ${restoredShopping.length} Shopping List Items`);
                 } else {
-                    Alert.alert('Signed In', `Signed in successfully! Sync issue: ${syncResult.error || 'Unknown'}`);
+                    Alert.alert('Success', 'Signed in successfully!');
                 }
+
             } else {
                 Alert.alert('Error', result.error || 'Sign in failed');
             }
