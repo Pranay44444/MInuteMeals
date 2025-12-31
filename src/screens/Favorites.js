@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar, RefreshControl, Alert } from 'react-native'
+import { View, Text, FlatList, StyleSheet, SafeAreaView, StatusBar, RefreshControl, Alert, Platform } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { useStore, setCurrentRecipe, removeFromFavorites, addToFavorites } from '../services/store'
 import { RecipeCard } from '../components/RecipeCard'
@@ -139,7 +139,8 @@ export default function Favorites() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa'
+    backgroundColor: '#f8f9fa',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   headerContainer: {
     backgroundColor: 'white',

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { View, Text, FlatList, StyleSheet, RefreshControl, Alert, SafeAreaView, StatusBar, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, FlatList, StyleSheet, RefreshControl, Alert, SafeAreaView, StatusBar, TouchableOpacity, ActivityIndicator, Platform } from 'react-native'
 import { useFocusEffect, useNavigation } from '@react-navigation/native'
 import { useStore, setCurrentRecipe, setRecipes, setLoading, setError, setFilter, resetFilters, addToFavorites, removeFromFavorites, appendGeneratedRecipes, setRecipesLoading, setRecipesError, setHasMoreRecipes } from '../services/store'
 import { FilterBar } from '../components/FilterBar'
@@ -285,6 +285,7 @@ const styles = StyleSheet.create({
   main: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   top: {
     paddingHorizontal: 16,
