@@ -12,6 +12,7 @@ import { debounce } from '../utils/debounce'
 import { detectIngredients } from '../vision/robustDetector'
 import { COMMON_INGREDIENTS } from '../constants/ingredients'
 import { findRecipes } from '../services/recipes'
+import WebCameraCapture from '../components/WebCameraCapture'
 
 export default function Pantry() {
   const navigation = useNavigation()
@@ -22,6 +23,7 @@ export default function Pantry() {
   const [scanning, setScanning] = useState(false)
   const [detectedIngredients, setDetectedIngredients] = useState([])
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [showWebCamera, setShowWebCamera] = useState(false)
 
   const debouncedSearch = useCallback(
     debounce((text) => {
@@ -66,6 +68,13 @@ export default function Pantry() {
   }, [searchText, addPantryItem])
 
   const handleScanPress = useCallback(async () => {
+    // On web, use the WebCameraCapture component
+    if (Platform.OS === 'web') {
+      setShowWebCamera(true)
+      return
+    }
+
+    // Native: Use expo-image-picker
     try {
       const permissionResult = await ImagePicker.requestCameraPermissionsAsync()
 
@@ -87,8 +96,8 @@ export default function Pantry() {
             onPress: async () => {
               const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
+                allowsEditing: Platform.OS !== 'android', // Skip crop screen on Android
+                quality: 0.6,
               })
 
               if (!result.canceled && result.assets?.[0]?.uri) {
@@ -101,7 +110,7 @@ export default function Pantry() {
             onPress: async () => {
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
+                allowsEditing: Platform.OS !== 'android', // Skip crop screen on Android
                 quality: 0.8,
               })
 
@@ -121,6 +130,11 @@ export default function Pantry() {
     }
   }, [])
 
+  const handleWebCameraCapture = useCallback(async (imageDataUrl) => {
+    setShowWebCamera(false)
+    await processImage(imageDataUrl)
+  }, [])
+
   const processImage = useCallback(async (imageUri) => {
     setScanning(true)
     try {
@@ -128,11 +142,15 @@ export default function Pantry() {
       const ingredients = detected.map(d => d.name)
 
       if (ingredients.length === 0) {
-        Alert.alert(
-          'No Ingredients Found',
-          'We couldn\'t detect any ingredients in the image. Try taking a clearer photo or add items manually.',
-          [{ text: 'OK' }]
-        )
+        if (Platform.OS === 'web') {
+          alert('No Ingredients Found\n\nWe couldn\'t detect any ingredients in the image. Try taking a clearer photo or add items manually.')
+        } else {
+          Alert.alert(
+            'No Ingredients Found',
+            'We couldn\'t detect any ingredients in the image. Try taking a clearer photo or add items manually.',
+            [{ text: 'OK' }]
+          )
+        }
         return
       }
 
@@ -148,7 +166,11 @@ export default function Pantry() {
         errorMessage = 'Network error. Please check your internet connection and try again.'
       }
 
-      Alert.alert('Scanning Error', errorMessage, [{ text: 'OK' }])
+      if (Platform.OS === 'web') {
+        alert('Scanning Error\n\n' + errorMessage)
+      } else {
+        Alert.alert('Scanning Error', errorMessage, [{ text: 'OK' }])
+      }
     } finally {
       setScanning(false)
     }
@@ -179,6 +201,12 @@ export default function Pantry() {
   }, [])
 
   const handleClearPress = useCallback(() => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to remove all ingredients from your pantry?')) {
+        dispatch(setPantry([]))
+      }
+      return
+    }
     Alert.alert(
       'Clear Pantry',
       'Are you sure you want to remove all ingredients from your pantry?',
@@ -191,7 +219,8 @@ export default function Pantry() {
 
   const handleFindRecipes = useCallback(async () => {
     if (state.pantry.items.length === 0) {
-      Alert.alert('No Ingredients', 'Add some ingredients to your pantry first!')
+      if (Platform.OS === 'web') alert('Add some ingredients to your pantry first!')
+      else Alert.alert('No Ingredients', 'Add some ingredients to your pantry first!')
       return
     }
 
@@ -208,7 +237,8 @@ export default function Pantry() {
       if (recipes.length > 0) {
         navigation.navigate('Matches')
       } else {
-        Alert.alert('No Recipes Found', 'Try adjusting your filters or adding more ingredients.')
+        if (Platform.OS === 'web') alert('Try adjusting your filters or adding more ingredients.')
+        else Alert.alert('No Recipes Found', 'Try adjusting your filters or adding more ingredients.')
       }
     } catch (error) {
       console.error('Error finding recipes:', error)
@@ -345,6 +375,13 @@ export default function Pantry() {
         ingredients={detectedIngredients}
         onConfirm={onIngredientsConfirmed}
         onCancel={onConfirmationCancelled}
+      />
+
+      {/* Web Camera for scanning on web platform */}
+      <WebCameraCapture
+        visible={showWebCamera}
+        onCapture={handleWebCameraCapture}
+        onClose={() => setShowWebCamera(false)}
       />
     </SafeAreaView>
   )

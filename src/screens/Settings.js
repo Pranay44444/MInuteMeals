@@ -103,22 +103,35 @@ export default function Settings() {
                 setSyncing(false);
 
                 if (didRestore) {
-                    Alert.alert('Welcome Back!', `Recovered items from cloud:\n• ${restoredPantry.length} Pantry Items\n• ${restoredFavorites.length} Favorites\n• ${restoredShopping.length} Shopping List Items`);
+                    const msg = `Recovered items from cloud:\n• ${restoredPantry.length} Pantry Items\n• ${restoredFavorites.length} Favorites\n• ${restoredShopping.length} Shopping List Items`;
+                    if (Platform.OS === 'web') alert(msg);
+                    else Alert.alert('Welcome Back!', msg);
                 } else {
-                    Alert.alert('Success', 'Signed in successfully!');
+                    if (Platform.OS === 'web') alert('Signed in successfully!');
+                    else Alert.alert('Success', 'Signed in successfully!');
                 }
 
             } else {
-                Alert.alert('Error', result.error || 'Sign in failed');
+                if (Platform.OS === 'web') alert(result.error || 'Sign in failed');
+                else Alert.alert('Error', result.error || 'Sign in failed');
             }
         } catch (error) {
             console.error('❌ Sign in error:', error);
-            Alert.alert('Error', 'Failed to sign in');
+            if (Platform.OS === 'web') alert('Failed to sign in');
+            else Alert.alert('Error', 'Failed to sign in');
             setSyncing(false);
         }
     };
 
     const handleSignOut = async () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm('Are you sure you want to sign out?')) {
+                await signOut();
+                setUser(null);
+                alert('Signed out successfully');
+            }
+            return;
+        }
         Alert.alert(
             'Sign Out',
             'Are you sure you want to sign out?',
@@ -148,12 +161,15 @@ export default function Settings() {
             );
 
             if (result.success) {
-                Alert.alert('Success', 'Data synced to cloud!');
+                if (Platform.OS === 'web') alert('Data synced to cloud!');
+                else Alert.alert('Success', 'Data synced to cloud!');
             } else {
-                Alert.alert('Error', result.error || 'Sync failed');
+                if (Platform.OS === 'web') alert(result.error || 'Sync failed');
+                else Alert.alert('Error', result.error || 'Sync failed');
             }
         } catch (error) {
-            Alert.alert('Error', 'Failed to sync data');
+            if (Platform.OS === 'web') alert('Failed to sync data');
+            else Alert.alert('Error', 'Failed to sync data');
         } finally {
             setSyncing(false);
         }

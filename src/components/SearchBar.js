@@ -1,31 +1,31 @@
-import React,{useState} from 'react'
-import {View,TextInput,TouchableOpacity,StyleSheet,Image} from 'react-native'
-import {Ionicons} from '@expo/vector-icons'
+import React, { useState } from 'react'
+import { View, TextInput, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 
 
-export const SearchBar = ({placeholder = "Search...",onSearch,onChangeText,value = "",autoFocus = false})=>{
+export const SearchBar = ({ placeholder = "Search...", onSearch, onChangeText, value = "", autoFocus = false }) => {
   const [text, setText] = useState(value)
-  const clickSearch = ()=>{
+  const clickSearch = () => {
     const hasSearch = onSearch
-    if (hasSearch){
+    if (hasSearch) {
       onSearch(text.trim())
     }
   }
-  const changeText = (newText)=>{
+  const changeText = (newText) => {
     setText(newText)
     const hasChange = onChangeText
-    if (hasChange){
+    if (hasChange) {
       onChangeText(newText)
     }
   }
-  const clickClear = ()=>{
+  const clickClear = () => {
     setText('')
     const hasChange = onChangeText
     if (hasChange) {
       onChangeText('')
     }
   }
-  const hasText = text.length>0
+  const hasText = text.length > 0
 
   return (
     <View style={styles.main}>
@@ -42,7 +42,7 @@ export const SearchBar = ({placeholder = "Search...",onSearch,onChangeText,value
         />
         {hasText && (
           <TouchableOpacity onPress={clickClear} style={styles.clear}>
-            <Ionicons name="close-circle" size={20} color="#666"/>
+            <Ionicons name="close-circle" size={20} color="#666" />
           </TouchableOpacity>
         )}
       </View>
@@ -72,7 +72,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#333'
+    color: '#333',
+    ...(Platform.OS === 'web' && { outlineStyle: 'none' })
   },
   clear: {
     marginLeft: 10

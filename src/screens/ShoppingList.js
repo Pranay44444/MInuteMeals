@@ -45,9 +45,22 @@ export default function ShoppingList() {
   const clickMoveToPantry = useCallback(() => {
     const boughtItems = state.shoppingList.filter((item) => item.bought)
     if (boughtItems.length === 0) {
-      Alert.alert('No Items', 'Mark items as bought first to move them to your pantry.')
+      if (Platform.OS === 'web') {
+        alert('Mark items as bought first to move them to your pantry.')
+      } else {
+        Alert.alert('No Items', 'Mark items as bought first to move them to your pantry.')
+      }
       return
     }
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Move ${boughtItems.length} bought items to your pantry and remove them from shopping list?`)) {
+        dispatch(moveBoughtToPantry())
+        alert(`Moved ${boughtItems.length} items to your pantry!`)
+      }
+      return
+    }
+
     Alert.alert(
       'Move to Pantry',
       `Move ${boughtItems.length} bought items to your pantry and remove them from shopping list?`,
@@ -65,6 +78,12 @@ export default function ShoppingList() {
   }, [state.shoppingList, dispatch])
 
   const clickClear = useCallback(() => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to remove all items from your shopping list?')) {
+        dispatch(setShoppingList([]))
+      }
+      return
+    }
     Alert.alert(
       'Clear Shopping List',
       'Are you sure you want to remove all items from your shopping list?',
@@ -159,7 +178,7 @@ export default function ShoppingList() {
         <FlatList
           data={state.shoppingList}
           renderItem={showItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}_${index}`}
           ListHeaderComponent={showTop}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list} />

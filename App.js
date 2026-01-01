@@ -11,6 +11,7 @@ import Favorites from './src/screens/Favorites'
 import Settings from './src/screens/Settings'
 import RecipeDetail from './src/screens/RecipeDetail'
 import { PantryIcon } from './src/components/PantryIcon'
+import AppShell from './src/components/AppShell'
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
@@ -114,10 +115,12 @@ function MainTabs() {
 
 export default function App() {
   return (
-    <StoreProvider>
-      <NavigationContainer>
-        <MainTabs />
-      </NavigationContainer>
-    </StoreProvider>
+    <AppShell>
+      <StoreProvider>
+        <NavigationContainer>
+          <MainTabs />
+        </NavigationContainer>
+      </StoreProvider>
+    </AppShell>
   )
 }

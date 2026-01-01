@@ -10,6 +10,7 @@
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { resolveNonVeg } from './resolveNonVeg';
 // ==================== CONFIGURATION ====================
 // Generic terms to drop (noise)
@@ -1150,8 +1151,20 @@ async function callAzureVision(imageBytes, features, endpoint, apiKey) {
 }
 /**
  * Convert image URI to base64
+ * Supports both native file URIs and web data URLs
  */
 async function imageToBase64(uri) {
+    // Handle web data URLs (e.g., data:image/jpeg;base64,...)
+    if (Platform.OS === 'web' && uri.startsWith('data:')) {
+        // Extract base64 from data URL
+        const base64Match = uri.match(/^data:image\/\w+;base64,(.+)$/);
+        if (base64Match && base64Match[1]) {
+            return base64Match[1];
+        }
+        throw new Error('Invalid data URL format');
+    }
+
+    // Native: Use FileSystem
     const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64
     });
@@ -1160,8 +1173,15 @@ async function imageToBase64(uri) {
 // ==================== PREPROCESSING ====================
 /**
  * Preprocess image for fallback
+ * Note: On web, preprocessing is skipped as ImageManipulator doesn't support data URLs
  */
 async function preprocessImage(uri) {
+    // Skip preprocessing on web (data URLs don't work with ImageManipulator)
+    if (Platform.OS === 'web') {
+        console.log('[Vision] Skipping preprocessing on web');
+        return uri;
+    }
+
     try {
         const actions = [];
         // Get image info

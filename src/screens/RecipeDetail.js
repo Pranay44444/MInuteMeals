@@ -230,12 +230,36 @@ export default function RecipeDetail() {
           )}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
-            {recipe.ingredients.map((ingredient, index) => renderIngredient({ item: ingredient, index }))}
+            {recipe.ingredients.map((ingredient, index) => (
+              <ListItem
+                key={`${ingredient.name}_${index}`}
+                title={ingredient.name}
+                subtitle={ingredient.qty ? (ingredient.unit ? `${ingredient.qty} ${ingredient.unit}` : `${ingredient.qty}`) : undefined}
+                leftIcon={
+                  <View style={[
+                    styles.ingredientDot,
+                    {
+                      backgroundColor: match?.matchedIngredients.some(i =>
+                        i.name.trim().toLowerCase() === ingredient.name.trim().toLowerCase()
+                      ) ? '#28a745' : '#ffc107'
+                    }
+                  ]} />
+                }
+                style={styles.ingredientItem}
+              />
+            ))}
           </View>
           {recipe.steps && recipe.steps.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Instructions</Text>
-              {recipe.steps.map((step, index) => renderStep({ item: step, index }))}
+              {recipe.steps.map((step, index) => (
+                <View key={`step_${index}`} style={styles.stepContainer}>
+                  <View style={styles.stepNumberContainer}>
+                    <Text style={styles.stepNumberText}>{index + 1}</Text>
+                  </View>
+                  <Text style={styles.instructionText}>{step}</Text>
+                </View>
+              ))}
             </View>
           )}
         </View>

@@ -1,9 +1,11 @@
-import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import React, { useState } from 'react'
+import { View, Text, TouchableOpacity, Pressable, StyleSheet, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Badge } from './Badge'
 
 export const RecipeCard = ({ recipe, match, isFavorite = false, onPress, onToggleFavorite, showMatchInfo = true }) => {
+  const [isHovered, setIsHovered] = useState(false)
+
   const clickHeart = (e) => {
     e.stopPropagation()
     if (onToggleFavorite) {
@@ -41,13 +43,19 @@ export const RecipeCard = ({ recipe, match, isFavorite = false, onPress, onToggl
   return (
     <TouchableOpacity style={styles.main} onPress={onPress}>
       <View style={styles.box}>
-        <TouchableOpacity
-          style={styles.heart}
+        <Pressable
+          style={[
+            styles.heart,
+            isHovered && styles.heartHovered
+          ]}
           onPress={clickHeart}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          onHoverIn={() => setIsHovered(true)}
+          onHoverOut={() => setIsHovered(false)}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          delayPressIn={0}
         >
           <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={24} color={isFavorite ? "#007AFF" : "#ccc"} />
-        </TouchableOpacity>
+        </Pressable>
         <Text style={styles.title} numberOfLines={2}>{recipe.title}</Text>
         <View style={styles.info}>
           <View style={styles.row}>
@@ -118,7 +126,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
-    elevation: 2
+    elevation: 2,
+    zIndex: 10
+  },
+  heartHovered: {
+    transform: [{ scale: 1.1 }],
+    backgroundColor: 'rgba(255, 255, 255, 1)'
   },
   badges: {
     position: 'absolute',

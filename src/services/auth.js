@@ -1,5 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const BACKEND_URL = 'https://crustiest-ilda-anemographically.ngrok-free.dev';
 
@@ -11,10 +12,15 @@ WebBrowser.maybeCompleteAuthSession();
  */
 export const signInWithGoogle = async () => {
     try {
+        // Use different return URLs for mobile vs web
+        const returnUrl = Platform.OS === 'web'
+            ? 'http://localhost:8081'
+            : 'exp://172.20.10.3:8081/--/auth/callback';
+
         // Open Google OAuth in browser
         const result = await WebBrowser.openAuthSessionAsync(
             `${BACKEND_URL}/auth/google`,
-            'exp://172.20.10.3:8081/--/auth/callback'
+            returnUrl
         );
 
         if (result.type === 'success' && result.url) {
