@@ -1,227 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, StatusBar, ScrollView, Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
-import { signInWithGoogle, signOut, getCurrentUser, isSignedIn } from '../services/auth';
-import { syncToCloud, getCloudData } from '../services/sync';
-import { useStore, setPantry, setFavorites, setShoppingList, mergeItems, setInitialSyncComplete, mergeStringArrays } from '../services/store';
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, StatusBar, ScrollView, Platform } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Ionicons } from '@expo/vector-icons'
+import { login, logout, getUser } from '../services/auth'
+import { pushToCloud, pullFromCloud } from '../services/sync'
+import { useStore, setPantry, setFavorites, setShoppingList, mergeItems, setInitialSyncComplete, mergeStringArrays } from '../services/store'
 
 export default function Settings() {
-    const [user, setUser] = useState(null);
-    const [syncing, setSyncing] = useState(false);
-    const { state, dispatch } = useStore();
+    const [user, setUser] = useState(null)
+    const [syncing, setSyncing] = useState(false)
+    const { state, dispatch } = useStore()
 
-    useEffect(() => {
-        checkUser();
-    }, []);
+    useEffect(() => { loadUser() }, [])
 
-    const checkUser = async () => {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-    };
+    const loadUser = async () => {
+        const u = await getUser()
+        setUser(u)
+    }
 
-    const handleSignIn = async () => {
+    const doLogin = async () => {
         try {
-            const result = await signInWithGoogle();
+            const result = await login()
             if (result.success) {
-                setUser(result.user);
+                setUser(result.user)
+                setSyncing(true)
+                console.log('[Sync] Pulling cloud data...')
 
-                // START CLOUD-FIRST RECOVERY
-                setSyncing(true);
-                console.log('[Sync] 1. Signing In - pulling cloud data...');
+                const cloud = await pullFromCloud()
 
-                // 1. Force PULL from Cloud
-                const cloudData = await getCloudData();
+                let pantry = state.pantry.items
+                let favs = state.favorites
+                let shopping = state.shoppingList
+                let filters = state.filters
+                let restored = false
 
-                let restoredPantry = state.pantry.items;
-                let restoredFavorites = state.favorites;
-                let restoredShopping = state.shoppingList;
-                let restoredFilters = state.filters;
-                let didRestore = false;
+                if (cloud && !cloud.error) {
+                    const isEmpty = state.pantry.items.length === 0 && state.favorites.length === 0
 
-                if (cloudData && !cloudData.error) {
-                    console.log('[Sync] 2. Cloud data found. Processing recovery...');
-
-                    // CRITICAL: If Local is empty ( Fresh Install / Clear Data ), ADOPT Cloud Data directly.
-                    // Otherwise, MERGE to be safe.
-                    const isLocalEmpty = state.pantry.items.length === 0 && state.favorites.length === 0;
-
-                    if (isLocalEmpty) {
-                        console.log('[Sync] Local is empty. Overwriting with Cloud Data (Recovery Mode).');
-                        if (cloudData.pantry) restoredPantry = cloudData.pantry;
-                        if (cloudData.favorites) restoredFavorites = cloudData.favorites;
-                        if (cloudData.shoppingList) restoredShopping = cloudData.shoppingList;
-                        if (cloudData.filters) restoredFilters = cloudData.filters;
-                        didRestore = true;
+                    if (isEmpty) {
+                        console.log('[Sync] Using cloud data')
+                        if (cloud.pantry) pantry = cloud.pantry
+                        if (cloud.favorites) favs = cloud.favorites
+                        if (cloud.shoppingList) shopping = cloud.shoppingList
+                        if (cloud.filters) filters = cloud.filters
+                        restored = true
                     } else {
-                        console.log('[Sync] Local has data. Merging Cloud + Local.');
-                        // Merge Logic (Safe)
-                        if (cloudData.pantry && Array.isArray(cloudData.pantry)) {
-                            restoredPantry = mergeStringArrays([...restoredPantry, ...cloudData.pantry]);
+                        console.log('[Sync] Merging data')
+                        if (cloud.pantry && Array.isArray(cloud.pantry)) pantry = mergeStringArrays([...pantry, ...cloud.pantry])
+                        if (cloud.favorites && Array.isArray(cloud.favorites)) {
+                            const map = {}
+                                ;[...favs, ...cloud.favorites].forEach(f => { if (f && f.id) map[f.id] = f })
+                            favs = Object.values(map)
                         }
-                        if (cloudData.favorites && Array.isArray(cloudData.favorites)) {
-                            const distinctFavs = {};
-                            [...restoredFavorites, ...cloudData.favorites].forEach(f => {
-                                if (f && f.id) distinctFavs[f.id] = f;
-                            });
-                            restoredFavorites = Object.values(distinctFavs);
-                        }
-                        if (cloudData.shoppingList && Array.isArray(cloudData.shoppingList)) {
-                            restoredShopping = mergeItems([...restoredShopping, ...cloudData.shoppingList]);
-                        }
+                        if (cloud.shoppingList && Array.isArray(cloud.shoppingList)) shopping = mergeItems([...shopping, ...cloud.shoppingList])
                     }
 
-                    // 3. PERSIST to Disk (AsyncStorage) - Source of Truth
                     await AsyncStorage.multiSet([
-                        ['pantry', JSON.stringify(restoredPantry)],
-                        ['favorites', JSON.stringify(restoredFavorites)],
-                        ['shoppingList', JSON.stringify(restoredShopping)]
-                    ]);
+                        ['pantry', JSON.stringify(pantry)],
+                        ['favorites', JSON.stringify(favs)],
+                        ['shoppingList', JSON.stringify(shopping)]
+                    ])
 
-                    // 4. UPDATE UI (Store)
-                    dispatch(setPantry(restoredPantry));
-                    dispatch(setFavorites(restoredFavorites));
-                    dispatch(setShoppingList(restoredShopping));
-
-                } else {
-                    console.log('[Sync] No cloud data found or error. Treating as new user.');
+                    dispatch(setPantry(pantry))
+                    dispatch(setFavorites(favs))
+                    dispatch(setShoppingList(shopping))
                 }
 
-                // UNLOCK GATEKEEPER: Now we have either recovered data or confirmed fresh user.
-                console.log('[Sync] Gatekeeper Unlocked (Sign In).');
-                dispatch(setInitialSyncComplete(true));
+                dispatch(setInitialSyncComplete(true))
+                await pushToCloud(pantry, favs, shopping, filters)
+                setSyncing(false)
 
-                // 5. FINAL SYNC (Push back to ensure consistency)
-                console.log('[Sync] 5. Finalizing Sync...');
-                await syncToCloud(
-                    restoredPantry,
-                    restoredFavorites,
-                    restoredShopping,
-                    restoredFilters
-                );
-
-                setSyncing(false);
-
-                if (didRestore) {
-                    const msg = `Recovered items from cloud:\n• ${restoredPantry.length} Pantry Items\n• ${restoredFavorites.length} Favorites\n• ${restoredShopping.length} Shopping List Items`;
-                    if (Platform.OS === 'web') alert(msg);
-                    else Alert.alert('Welcome Back!', msg);
+                if (restored) {
+                    const msg = `Recovered: ${pantry.length} pantry, ${favs.length} favorites, ${shopping.length} shopping`
+                    Platform.OS === 'web' ? alert(msg) : Alert.alert('Welcome Back!', msg)
                 } else {
-                    if (Platform.OS === 'web') alert('Signed in successfully!');
-                    else Alert.alert('Success', 'Signed in successfully!');
+                    Platform.OS === 'web' ? alert('Signed in!') : Alert.alert('Success', 'Signed in!')
                 }
-
             } else {
-                if (Platform.OS === 'web') alert(result.error || 'Sign in failed');
-                else Alert.alert('Error', result.error || 'Sign in failed');
+                Platform.OS === 'web' ? alert(result.error || 'Login failed') : Alert.alert('Error', result.error || 'Login failed')
             }
-        } catch (error) {
-            console.error('❌ Sign in error:', error);
-            if (Platform.OS === 'web') alert('Failed to sign in');
-            else Alert.alert('Error', 'Failed to sign in');
-            setSyncing(false);
+        } catch (err) {
+            console.error('Login error:', err)
+            Platform.OS === 'web' ? alert('Failed to sign in') : Alert.alert('Error', 'Failed to sign in')
+            setSyncing(false)
         }
-    };
+    }
 
-    const handleSignOut = async () => {
+    const doLogout = async () => {
         if (Platform.OS === 'web') {
-            if (window.confirm('Are you sure you want to sign out?')) {
-                await signOut();
-                setUser(null);
-                alert('Signed out successfully');
+            if (window.confirm('Sign out?')) {
+                await logout()
+                setUser(null)
+                alert('Signed out')
             }
-            return;
+            return
         }
-        Alert.alert(
-            'Sign Out',
-            'Are you sure you want to sign out?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Sign Out',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await signOut();
-                        setUser(null);
-                        Alert.alert('Success', 'Signed out successfully');
-                    }
+        Alert.alert('Sign Out', 'Are you sure?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Sign Out', style: 'destructive', onPress: async () => {
+                    await logout()
+                    setUser(null)
+                    Alert.alert('Success', 'Signed out')
                 }
-            ]
-        );
-    };
-
-    const handleSyncNow = async () => {
-        setSyncing(true);
-        try {
-            const result = await syncToCloud(
-                state.pantry.items,
-                state.favorites,
-                state.shoppingList,
-                state.filters
-            );
-
-            if (result.success) {
-                if (Platform.OS === 'web') alert('Data synced to cloud!');
-                else Alert.alert('Success', 'Data synced to cloud!');
-            } else {
-                if (Platform.OS === 'web') alert(result.error || 'Sync failed');
-                else Alert.alert('Error', result.error || 'Sync failed');
             }
-        } catch (error) {
-            if (Platform.OS === 'web') alert('Failed to sync data');
-            else Alert.alert('Error', 'Failed to sync data');
+        ])
+    }
+
+    const doSync = async () => {
+        setSyncing(true)
+        try {
+            const result = await pushToCloud(state.pantry.items, state.favorites, state.shoppingList, state.filters)
+            if (result.success) {
+                Platform.OS === 'web' ? alert('Synced!') : Alert.alert('Success', 'Synced!')
+            } else {
+                Platform.OS === 'web' ? alert(result.error || 'Sync failed') : Alert.alert('Error', result.error || 'Sync failed')
+            }
+        } catch (err) {
+            Platform.OS === 'web' ? alert('Sync failed') : Alert.alert('Error', 'Sync failed')
         } finally {
-            setSyncing(false);
+            setSyncing(false)
         }
-    };
+    }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.main}>
             <StatusBar barStyle="dark-content" backgroundColor="white" />
             <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.title}>Settings</Text>
 
-                {/* User Section */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Account</Text>
-
                     {user ? (
                         <View style={styles.card}>
-                            <View style={styles.userInfo}>
+                            <View style={styles.row}>
                                 <Ionicons name="person-circle" size={48} color="#007AFF" />
-                                <View style={styles.userDetails}>
-                                    <Text style={styles.userName}>{user.name}</Text>
-                                    <Text style={styles.userEmail}>{user.email}</Text>
-                                    <Text style={styles.syncStatus}>
-                                        {syncing ? 'Syncing...' : 'Auto-sync enabled'}
-                                    </Text>
+                                <View style={styles.info}>
+                                    <Text style={styles.name}>{user.name}</Text>
+                                    <Text style={styles.email}>{user.email}</Text>
+                                    <Text style={styles.status}>{syncing ? 'Syncing...' : 'Auto-sync enabled'}</Text>
                                 </View>
                             </View>
-
-                            <TouchableOpacity
-                                style={styles.signOutButton}
-                                onPress={handleSignOut}
-                            >
-                                <Text style={styles.signOutText}>Sign Out</Text>
+                            <TouchableOpacity style={styles.outBtn} onPress={doLogout}>
+                                <Text style={styles.outText}>Sign Out</Text>
                             </TouchableOpacity>
                         </View>
                     ) : (
                         <View style={styles.card}>
-                            <Text style={styles.cardDescription}>
-                                Sign in to backup your data and sync across devices
-                            </Text>
-                            <TouchableOpacity
-                                style={styles.signInButton}
-                                onPress={handleSignIn}
-                            >
+                            <Text style={styles.desc}>Sign in to backup your data and sync across devices</Text>
+                            <TouchableOpacity style={styles.inBtn} onPress={doLogin}>
                                 <Ionicons name="logo-google" size={20} color="white" />
-                                <Text style={styles.signInText}>Sign in with Google</Text>
+                                <Text style={styles.inText}>Sign in with Google</Text>
                             </TouchableOpacity>
                         </View>
                     )}
                 </View>
 
-                {/* App Info */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>About</Text>
                     <View style={styles.card}>
@@ -231,125 +165,26 @@ export default function Settings() {
                 </View>
             </ScrollView>
         </SafeAreaView>
-    );
+    )
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fa',
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    },
-    content: {
-        padding: 16,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 24,
-    },
-    section: {
-        marginBottom: 24,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#666',
-        marginBottom: 12,
-    },
-    card: {
-        backgroundColor: 'white',
-        borderRadius: 12,
-        padding: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    userInfo: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    userDetails: {
-        marginLeft: 12,
-        flex: 1,
-    },
-    userName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-    },
-    userEmail: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 4,
-    },
-    syncStatus: {
-        fontSize: 12,
-        color: '#007AFF',
-        marginTop: 6,
-        fontWeight: '500',
-    },
-    syncButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#E3F2FD',
-        padding: 12,
-        borderRadius: 8,
-        marginBottom: 12,
-    },
-    syncButtonText: {
-        color: '#007AFF',
-        fontSize: 16,
-        fontWeight: '600',
-        marginLeft: 8,
-    },
-    signOutButton: {
-        padding: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#FF3B30',
-        alignItems: 'center',
-    },
-    signOutText: {
-        color: '#FF3B30',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    cardDescription: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 16,
-        lineHeight: 20,
-    },
-    signInButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#007AFF',
-        padding: 14,
-        borderRadius: 8,
-    },
-    signInText: {
-        color: 'white',
-        fontSize: 16,
-        fontWeight: '600',
-        marginLeft: 8,
-    },
-    appName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-        textAlign: 'center',
-    },
-    version: {
-        fontSize: 14,
-        color: '#666',
-        textAlign: 'center',
-        marginTop: 4,
-    },
-});
+    main: { flex: 1, backgroundColor: '#f8f9fa', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
+    content: { padding: 16 },
+    title: { fontSize: 28, fontWeight: 'bold', color: '#333', marginBottom: 24 },
+    section: { marginBottom: 24 },
+    sectionTitle: { fontSize: 18, fontWeight: '600', color: '#666', marginBottom: 12 },
+    card: { backgroundColor: 'white', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+    row: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    info: { marginLeft: 12, flex: 1 },
+    name: { fontSize: 18, fontWeight: '600', color: '#333' },
+    email: { fontSize: 14, color: '#666', marginTop: 4 },
+    status: { fontSize: 12, color: '#007AFF', marginTop: 6, fontWeight: '500' },
+    outBtn: { padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FF3B30', alignItems: 'center' },
+    outText: { color: '#FF3B30', fontSize: 16, fontWeight: '600' },
+    desc: { fontSize: 14, color: '#666', marginBottom: 16, lineHeight: 20 },
+    inBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#007AFF', padding: 14, borderRadius: 8 },
+    inText: { color: 'white', fontSize: 16, fontWeight: '600', marginLeft: 8 },
+    appName: { fontSize: 18, fontWeight: '600', color: '#333', textAlign: 'center' },
+    version: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 4 }
+})

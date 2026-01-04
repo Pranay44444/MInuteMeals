@@ -14,11 +14,10 @@ import RecipeDetail from './src/screens/RecipeDetail'
 import AppShell from './src/components/AppShell'
 
 const basketIcon = require('./assets/icons/basket.png')
-
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
 
-function MatchesNav() {
+function MatchesStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MatchesMain" component={Matches} />
@@ -26,7 +25,8 @@ function MatchesNav() {
     </Stack.Navigator>
   )
 }
-function PantryNav() {
+
+function PantryStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="PantryMain" component={Pantry} />
@@ -35,7 +35,7 @@ function PantryNav() {
   )
 }
 
-function ShoppingNav() {
+function ShoppingStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ShoppingMain" component={ShoppingList} />
@@ -44,7 +44,7 @@ function ShoppingNav() {
   )
 }
 
-function FavoritesNav() {
+function FavoritesStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="FavoritesMain" component={Favorites} />
@@ -53,64 +53,14 @@ function FavoritesNav() {
   )
 }
 
-function MainTabs() {
+function Tabs() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#666',
-        headerShown: false,
-        tabBarIconStyle: {
-          width: 24,
-          height: 24,
-        },
-      }}
-    >
-      <Tab.Screen
-        name="Matches"
-        component={MatchesNav}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Pantry"
-        component={PantryNav}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Image source={basketIcon} style={{ width: 24, height: 24, tintColor: color }} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Shopping"
-        component={ShoppingNav}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="list" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Favorites"
-        component={FavoritesNav}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="heart" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={Settings}
-        options={{
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="settings" size={24} color={color} />
-          ),
-        }}
-      />
+    <Tab.Navigator screenOptions={{ tabBarActiveTintColor: '#007AFF', tabBarInactiveTintColor: '#666', headerShown: false, tabBarIconStyle: { width: 24, height: 24 } }}>
+      <Tab.Screen name="Matches" component={MatchesStack} options={{ tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} /> }} />
+      <Tab.Screen name="Pantry" component={PantryStack} options={{ tabBarIcon: ({ color }) => <Image source={basketIcon} style={{ width: 24, height: 24, tintColor: color }} /> }} />
+      <Tab.Screen name="Shopping" component={ShoppingStack} options={{ tabBarIcon: ({ color }) => <Ionicons name="list" size={24} color={color} /> }} />
+      <Tab.Screen name="Favorites" component={FavoritesStack} options={{ tabBarIcon: ({ color }) => <Ionicons name="heart" size={24} color={color} /> }} />
+      <Tab.Screen name="Settings" component={Settings} options={{ tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} /> }} />
     </Tab.Navigator>
   )
 }
@@ -120,7 +70,7 @@ export default function App() {
     <AppShell>
       <StoreProvider>
         <NavigationContainer>
-          <MainTabs />
+          <Tabs />
         </NavigationContainer>
       </StoreProvider>
     </AppShell>

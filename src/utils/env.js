@@ -1,21 +1,12 @@
 import Constants from 'expo-constants'
 
 export const getApiKey = () => {
-  const key = Constants.expoConfig?.extra?.geminiApiKey ||
-    Constants.manifest?.extra?.geminiApiKey ||
-    process.env.GEMINI_API_KEY ||
-    null
-
-  if (key && key.length < 20) {
-    console.warn('Invalid API key format detected')
-    return null
-  }
+  const key = Constants.expoConfig?.extra?.geminiApiKey || Constants.manifest?.extra?.geminiApiKey || process.env.GEMINI_API_KEY || null
+  if (key && key.length < 20) { console.warn('Invalid API key'); return null }
   return key
 }
 
-export const hasKey = () => {
-  return getApiKey() !== null
-}
+export const hasKey = () => getApiKey() !== null
 
 export const checkKey = (key) => {
   if (!key || typeof key !== 'string') return false

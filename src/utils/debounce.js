@@ -1,7 +1,4 @@
-export const debounce = (action,wait) => {
-  let timer
-  return (...inputs) => {
-    clearTimeout(timer)
-    timer = setTimeout(() => action(...inputs),wait)
-  }
+export const debounce = (fn, wait) => {
+  let t
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait) }
 }

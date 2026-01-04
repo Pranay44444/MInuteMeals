@@ -1,24 +1,13 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
 const userSchema = new mongoose.Schema({
-    googleId: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    email: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    name: {
-        type: String,
-        required: true
-    },
+    googleId: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
     data: {
-        pantry: [String], // Array of ingredient names
-        favorites: [mongoose.Schema.Types.Mixed], // Array of full recipe objects
-        shoppingList: [mongoose.Schema.Types.Mixed], // Array of shopping items
+        pantry: [String],
+        favorites: [mongoose.Schema.Types.Mixed],
+        shoppingList: [mongoose.Schema.Types.Mixed],
         filters: {
             isVegetarian: Boolean,
             difficulty: String,
@@ -26,14 +15,8 @@ const userSchema = new mongoose.Schema({
             searchQuery: String
         }
     },
-    lastSynced: {
-        type: Date,
-        default: Date.now
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
-});
+    lastSynced: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: Date.now }
+})
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('User', userSchema)

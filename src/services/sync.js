@@ -1,126 +1,83 @@
-import { getCurrentUser } from './auth';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUser } from './auth'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const BACKEND_URL = 'https://crustiest-ilda-anemographically.ngrok-free.dev';
+const API = 'https://crustiest-ilda-anemographically.ngrok-free.dev'
 
-/**
- * Sync all data to cloud
- */
-export const syncToCloud = async (pantry, favorites, shoppingList, filters) => {
+export const pushToCloud = async (pantry, favorites, shoppingList, filters) => {
     try {
-        const user = await getCurrentUser();
-        if (!user) {
-            return { success: false, error: 'Not signed in' };
-        }
+        const user = await getUser()
+        if (!user) return { success: false, error: 'Not signed in' }
 
-        // Get auth token from AsyncStorage
-        const token = await AsyncStorage.getItem('authToken');
+        const token = await AsyncStorage.getItem('authToken')
+        if (!token) return { success: false, error: 'No token' }
 
-        if (!token) {
-            return { success: false, error: 'No auth token' };
-        }
-
-        const response = await fetch(`${BACKEND_URL}/api/user/data`, {
+        const res = await fetch(`${API}/api/user/data`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                pantry,
-                favorites,
-                shoppingList,
-                filters
-            })
-        });
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ pantry, favorites, shoppingList, filters })
+        })
 
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Sync error:', error);
-        return { success: false, error: error.message };
+        return await res.json()
+    } catch (err) {
+        console.error('Sync error:', err)
+        return { success: false, error: err.message }
     }
-};
+}
 
-/**
- * Get data from cloud
- */
-export const getCloudData = async () => {
+export const pullFromCloud = async () => {
     try {
-        const user = await getCurrentUser();
-        if (!user) {
-            return { success: false, error: 'Not signed in' };
-        }
+        const user = await getUser()
+        if (!user) return { success: false, error: 'Not signed in' }
 
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) return { success: false, error: 'No auth token' };
+        const token = await AsyncStorage.getItem('authToken')
+        if (!token) return { success: false, error: 'No token' }
 
-        const response = await fetch(`${BACKEND_URL}/api/user/data`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        const res = await fetch(`${API}/api/user/data`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
 
-        const result = await response.json();
-        // UNWRAP: Backend returns { success: true, data: { pantry: ... } }
-        // We want { success: true, pantry: ... } for easier consumption
+        const result = await res.json()
         if (result.success && result.data) {
-            return { success: true, ...result.data };
+            return { success: true, ...result.data }
         }
-        return result;
-    } catch (error) {
-        console.error('Get cloud data error:', error);
-        return { success: false, error: error.message };
+        return result
+    } catch (err) {
+        console.error('Pull error:', err)
+        return { success: false, error: err.message }
     }
-};
+}
 
-/**
- * Sync specific field to cloud
- */
-export const syncField = async (field, data) => {
+export const pushField = async (field, data) => {
     try {
-        const user = await getCurrentUser();
-        if (!user) {
-            return { success: false, error: 'Not signed in' };
-        }
+        const user = await getUser()
+        if (!user) return { success: false, error: 'Not signed in' }
 
-        const token = await AsyncStorage.getItem('authToken');
-        if (!token) return { success: false, error: 'No auth token' };
+        const token = await AsyncStorage.getItem('authToken')
+        if (!token) return { success: false, error: 'No token' }
 
-        const response = await fetch(`${BACKEND_URL}/api/user/data/${field}`, {
+        const res = await fetch(`${API}/api/user/data/${field}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ [field]: data })
-        });
+        })
 
-        const result = await response.json();
-        return result;
-    } catch (error) {
-        console.error('Sync field error:', error);
-        return { success: false, error: error.message };
+        return await res.json()
+    } catch (err) {
+        console.error('Push field error:', err)
+        return { success: false, error: err.message }
     }
-};
+}
 
-/**
- * Auto-sync with debounce (call this after data changes)
- */
-let syncTimeout = null;
+let timer = null
 export const autoSync = async (pantry, favorites, shoppingList, filters) => {
-    // Clear previous timeout
-    if (syncTimeout) {
-        clearTimeout(syncTimeout);
-    }
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(async () => {
+        const result = await pushToCloud(pantry, favorites, shoppingList, filters)
+        if (result.success) console.log('[Sync] Done')
+        else console.log('[Sync] Failed:', result.error)
+    }, 2000)
+}
 
-    // Debounce sync by 2 seconds
-    syncTimeout = setTimeout(async () => {
-        const result = await syncToCloud(pantry, favorites, shoppingList, filters);
-        if (result.success) {
-            console.log('[Sync] Auto-synced to cloud');
-        } else {
-            console.log('[Sync] Auto-sync failed:', result.error);
-        }
-    }, 2000);
-};
+export const syncToCloud = pushToCloud
+export const getCloudData = pullFromCloud
+export const syncField = pushField

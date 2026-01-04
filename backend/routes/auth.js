@@ -1,78 +1,58 @@
-const express = require('express');
-const passport = require('passport');
-const router = express.Router();
+const express = require('express')
+const passport = require('passport')
+const router = express.Router()
 
-// Google OAuth login
-router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
 
-// Google OAuth callback
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
   (req, res) => {
-    // Successful authentication - create JWT
-    const jwt = require('jsonwebtoken');
+    const jwt = require('jsonwebtoken')
 
     const user = {
       id: req.user._id.toString(),
       email: req.user.email,
       name: req.user.name
-    };
+    }
 
-    // Generate JWT token
-    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '30d' })
 
-    // Detect if request is from mobile app or web browser
-    const userAgent = req.get('User-Agent') || '';
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent);
+    const agent = req.get('User-Agent') || ''
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(agent)
 
-    // Use different redirect URLs for mobile vs web
-    const mobileRedirectUrl = `exp://172.20.10.3:8081/--/auth/callback?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`;
-    const webRedirectUrl = `http://localhost:8081?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`;
-    const redirectUrl = isMobile ? mobileRedirectUrl : webRedirectUrl;
+    const mobileUrl = `exp://172.20.10.3:8081/--/auth/callback?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
+    const webUrl = `http://localhost:8081?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
+    const url = isMobile ? mobileUrl : webUrl
 
     res.send(`
       <html>
-        <head>
-          <meta http-equiv="refresh" content="0; url=${redirectUrl}" />
-        </head>
+        <head><meta http-equiv="refresh" content="0; url=${url}" /></head>
         <body>
-          <h2>✅ Sign in successful!</h2>
+          <h2>Sign in successful!</h2>
           <p>Redirecting back to app...</p>
-          <script>
-            window.location.href = '${redirectUrl}';
-          </script>
+          <script>window.location.href = '${url}'</script>
         </body>
       </html>
-    `);
+    `)
   }
-);
+)
 
-// Get current user
 router.get('/user', (req, res) => {
   if (req.isAuthenticated()) {
     res.json({
       success: true,
-      user: {
-        id: req.user._id,
-        email: req.user.email,
-        name: req.user.name
-      }
-    });
+      user: { id: req.user._id, email: req.user.email, name: req.user.name }
+    })
   } else {
-    res.status(401).json({ success: false, message: 'Not authenticated' });
+    res.status(401).json({ success: false, message: 'Not authenticated' })
   }
-});
+})
 
-// Logout
 router.post('/logout', (req, res) => {
   req.logout((err) => {
-    if (err) {
-      return res.status(500).json({ success: false, message: 'Logout failed' });
-    }
-    res.json({ success: true, message: 'Logged out successfully' });
-  });
-});
+    if (err) return res.status(500).json({ success: false, message: 'Logout failed' })
+    res.json({ success: true, message: 'Logged out' })
+  })
+})
 
-module.exports = router;
+module.exports = router
