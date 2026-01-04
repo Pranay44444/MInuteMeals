@@ -57,7 +57,7 @@ function Tabs() {
   return (
     <Tab.Navigator screenOptions={{ tabBarActiveTintColor: '#007AFF', tabBarInactiveTintColor: '#666', headerShown: false, tabBarIconStyle: { width: 24, height: 24 } }}>
       <Tab.Screen name="Matches" component={MatchesStack} options={{ tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} /> }} />
-      <Tab.Screen name="Pantry" component={PantryStack} options={{ tabBarIcon: ({ color }) => <Image source={basketIcon} style={{ width: 24, height: 24, tintColor: color }} /> }} />
+      <Tab.Screen name="Pantry" component={PantryStack} options={{ tabBarIcon: ({ color }) => <Ionicons name="basket" size={24} color={color} /> }} />
       <Tab.Screen name="Shopping" component={ShoppingStack} options={{ tabBarIcon: ({ color }) => <Ionicons name="list" size={24} color={color} /> }} />
       <Tab.Screen name="Favorites" component={FavoritesStack} options={{ tabBarIcon: ({ color }) => <Ionicons name="heart" size={24} color={color} /> }} />
       <Tab.Screen name="Settings" component={Settings} options={{ tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} /> }} />
