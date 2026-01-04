@@ -20,8 +20,11 @@ router.get('/google/callback',
     const agent = req.get('User-Agent') || ''
     const isMobile = /iPhone|iPad|iPod|Android/i.test(agent)
 
-    const mobileUrl = `exp://172.20.10.3:8081/--/auth/callback?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
-    const webUrl = `http://localhost:8081?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081'
+    const mobileDeepLink = process.env.MOBILE_DEEP_LINK || 'exp://172.20.10.3:8081/--/auth/callback'
+
+    const webUrl = `${frontendUrl}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
+    const mobileUrl = `${mobileDeepLink}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
     const url = isMobile ? mobileUrl : webUrl
 
     res.send(`
