@@ -1,4 +1,5 @@
 import React from 'react'
+import { Image } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { createStackNavigator } from '@react-navigation/stack'
@@ -10,8 +11,9 @@ import ShoppingList from './src/screens/ShoppingList'
 import Favorites from './src/screens/Favorites'
 import Settings from './src/screens/Settings'
 import RecipeDetail from './src/screens/RecipeDetail'
-import { PantryIcon } from './src/components/PantryIcon'
 import AppShell from './src/components/AppShell'
+
+const basketIcon = require('./assets/icons/basket.png')
 
 const Tab = createBottomTabNavigator()
 const Stack = createStackNavigator()
@@ -78,7 +80,7 @@ function MainTabs() {
         component={PantryNav}
         options={{
           tabBarIcon: ({ color }) => (
-            <PantryIcon color={color} size={24} />
+            <Image source={basketIcon} style={{ width: 24, height: 24, tintColor: color }} />
           ),
         }}
       />

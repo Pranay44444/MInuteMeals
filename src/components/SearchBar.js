@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { View, TextInput, TouchableOpacity, StyleSheet, Image, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
+const searchIcon = require('../../assets/icons/search.png')
 
 export const SearchBar = ({ placeholder = "Search...", onSearch, onChangeText, value = "", autoFocus = false }) => {
   const [text, setText] = useState(value)
@@ -30,7 +31,7 @@ export const SearchBar = ({ placeholder = "Search...", onSearch, onChangeText, v
   return (
     <View style={styles.main}>
       <View style={styles.box}>
-        <Image source={require('../../assets/icons/search.png')} style={styles.icon} />
+        <Image source={searchIcon} style={styles.icon} />
         <TextInput
           style={styles.input}
           placeholder={placeholder}
