@@ -2,7 +2,10 @@ const express = require('express')
 const passport = require('passport')
 const router = express.Router()
 
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
+router.get('/google', (req, res, next) => {
+  const state = req.query.platform || 'web'
+  passport.authenticate('google', { scope: ['profile', 'email'], state })(req, res, next)
+})
 
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
@@ -17,15 +20,15 @@ router.get('/google/callback',
 
     const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '30d' })
 
-    const agent = req.get('User-Agent') || ''
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(agent)
+    const platform = req.query.state || 'web'
+    const isMobileApp = (platform === 'ios' || platform === 'android')
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081'
     const mobileDeepLink = process.env.MOBILE_DEEP_LINK || 'exp://172.20.10.3:8081/--/auth/callback'
 
     const webUrl = `${frontendUrl}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
     const mobileUrl = `${mobileDeepLink}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
-    const url = isMobile ? mobileUrl : webUrl
+    const url = isMobileApp ? mobileUrl : webUrl
 
     res.send(`
       <html>

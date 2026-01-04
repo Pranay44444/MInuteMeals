@@ -13,7 +13,8 @@ export const login = async () => {
             ? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081')
             : WebBrowser.makeRedirectUri()
 
-        const result = await WebBrowser.openAuthSessionAsync(`${API}/auth/google`, returnUrl)
+        const authUrl = `${API}/auth/google?platform=${Platform.OS}`
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl)
 
         if (result.type === 'success' && result.url) {
             const url = new URL(result.url)
