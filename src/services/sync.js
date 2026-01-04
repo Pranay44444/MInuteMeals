@@ -1,7 +1,8 @@
 import { getUser } from './auth'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const API = 'https://crustiest-ilda-anemographically.ngrok-free.dev'
+import Constants from 'expo-constants'
+const API = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000'
 
 export const pushToCloud = async (pantry, favorites, shoppingList, filters) => {
     try {
