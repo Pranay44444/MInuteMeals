@@ -1,16 +1,17 @@
 import * as WebBrowser from 'expo-web-browser'
+import Constants from 'expo-constants'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
 
-const API = 'https://crustiest-ilda-anemographically.ngrok-free.dev'
+const API = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000'
 
 WebBrowser.maybeCompleteAuthSession()
 
 export const login = async () => {
     try {
         const returnUrl = Platform.OS === 'web'
-            ? 'http://localhost:8081'
-            : 'exp://172.20.10.3:8081/--/auth/callback'
+            ? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081')
+            : WebBrowser.makeRedirectUri()
 
         const result = await WebBrowser.openAuthSessionAsync(`${API}/auth/google`, returnUrl)
 

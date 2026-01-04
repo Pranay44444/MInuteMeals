@@ -10,6 +10,8 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 app.use(cors({ origin: true, credentials: true }))
+app.use(cors({ origin: true, credentials: true }))
+app.set('trust proxy', 1) // trust first proxy
 app.use(express.json())
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -29,7 +31,8 @@ const User = require('./models/User')
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: 'https://crustiest-ilda-anemographically.ngrok-free.dev/auth/google/callback'
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
     try {
         let user = await User.findOne({ googleId: profile.id })

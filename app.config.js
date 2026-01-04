@@ -13,6 +13,7 @@ export default {
     extra: {
       spoonacularApiKey: process.env.SPOONACULAR_API_KEY,
       geminiApiKey: process.env.GEMINI_API_KEY,
+      apiUrl: process.env.API_URL || 'http://localhost:3000',
       azureVisionEndpoint: process.env.AZURE_VISION_ENDPOINT || 'https://minutemeals-vision.cognitiveservices.azure.com',
       azureVisionKey: process.env.AZURE_VISION_KEY
     },
