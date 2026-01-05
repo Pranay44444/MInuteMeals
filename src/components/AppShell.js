@@ -3,8 +3,8 @@ import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native'
 
 const AppShell = ({ children }) => {
     const { width } = useWindowDimensions()
-    const isMobile = Platform.OS === 'web' && width < 400
-    const isDesktop = Platform.OS === 'web' && width >= 400
+    const isMobile = Platform.OS === 'web' && width < 768
+    const isDesktop = Platform.OS === 'web' && width >= 768
 
     useEffect(() => {
         if (Platform.OS !== 'web') return
