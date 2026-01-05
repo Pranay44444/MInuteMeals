@@ -4,6 +4,7 @@ export default {
   expo: {
     name: "MinuteMeals",
     slug: "MinuteMeals",
+    scheme: "minutemeals",
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/icon.png",

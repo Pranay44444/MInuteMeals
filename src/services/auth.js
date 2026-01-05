@@ -1,4 +1,5 @@
 import * as WebBrowser from 'expo-web-browser'
+import * as Linking from 'expo-linking'
 import Constants from 'expo-constants'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Platform } from 'react-native'
@@ -8,13 +9,22 @@ const API = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000'
 WebBrowser.maybeCompleteAuthSession()
 
 export const login = async () => {
+    console.log('[Auth] Login started')
     try {
+        console.log('[Auth] Checking Platform:', Platform.OS)
+
         const returnUrl = Platform.OS === 'web'
             ? (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081')
-            : WebBrowser.makeRedirectUri()
+            : Linking.createURL('/')
+
+        console.log('[Auth] Return URL:', returnUrl)
 
         const authUrl = `${API}/auth/google?platform=${Platform.OS}`
+        console.log('[Auth] Auth URL:', authUrl)
+
+        console.log('[Auth] Opening session...')
         const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl)
+        console.log('[Auth] Result:', JSON.stringify(result))
 
         if (result.type === 'success' && result.url) {
             const url = new URL(result.url)
