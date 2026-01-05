@@ -19,7 +19,7 @@ export const login = async () => {
 
         console.log('[Auth] Return URL:', returnUrl)
 
-        const authUrl = `${API}/auth/google?platform=${Platform.OS}`
+        const authUrl = `${API}/auth/google?platform=${Platform.OS}&returnUrl=${encodeURIComponent(returnUrl)}`
         console.log('[Auth] Auth URL:', authUrl)
 
         console.log('[Auth] Opening session...')

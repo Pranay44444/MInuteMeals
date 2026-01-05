@@ -3,7 +3,9 @@ const passport = require('passport')
 const router = express.Router()
 
 router.get('/google', (req, res, next) => {
-  const state = req.query.platform || 'web'
+  const platform = req.query.platform || 'web'
+  const returnUrl = req.query.returnUrl
+  const state = JSON.stringify({ platform, returnUrl })
   passport.authenticate('google', { scope: ['profile', 'email'], state })(req, res, next)
 })
 
@@ -20,23 +22,39 @@ router.get('/google/callback',
 
     const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '30d' })
 
-    const platform = req.query.state || 'web'
+    let platform = 'web'
+    let returnUrl = null
+
+    try {
+      const state = JSON.parse(req.query.state)
+      platform = state.platform
+      returnUrl = state.returnUrl
+    } catch (e) {
+      platform = req.query.state || 'web'
+    }
+
     const isMobileApp = (platform === 'ios' || platform === 'android')
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8081'
-    const mobileDeepLink = process.env.MOBILE_DEEP_LINK || 'exp://172.20.10.3:8081/--/auth/callback'
+    let targetUrl = ''
 
-    const webUrl = `${frontendUrl}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
-    const mobileUrl = `${mobileDeepLink}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
-    const url = isMobileApp ? mobileUrl : webUrl
+    if (isMobileApp && returnUrl) {
+      targetUrl = `${returnUrl}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
+    } else if (isMobileApp) {
+      // Fallback if no returnUrl provided (Legacy support)
+      const mobileDeepLink = process.env.MOBILE_DEEP_LINK || 'minutemeals://'
+      targetUrl = `${mobileDeepLink}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
+    } else {
+      targetUrl = `${frontendUrl}?token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify(user))}`
+    }
 
     res.send(`
       <html>
-        <head><meta http-equiv="refresh" content="0; url=${url}" /></head>
+        <head><meta http-equiv="refresh" content="0; url=${targetUrl}" /></head>
         <body>
           <h2>Sign in successful!</h2>
           <p>Redirecting back to app...</p>
-          <script>window.location.href = '${url}'</script>
+          <script>window.location.href = '${targetUrl}'</script>
         </body>
       </html>
     `)
