@@ -12,6 +12,12 @@
         },
         "production": {
             "distribution": "store"
+        },
+        "production-apk": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            }
         }
     },
     "submit": {
