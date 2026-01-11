@@ -1,143 +1,93 @@
 # MinuteMeals 🍲
-[![React Native](https://img.shields.io/badge/React%20Native-JavaScript-blue)](https://reactnative.dev/)
-[![Expo](https://img.shields.io/badge/Expo-Ready-000?logo=expo)](https://expo.dev/)
-[![Platform](https://img.shields.io/badge/Android%20%7C%20iOS%20%7C%20Web-supported-success)]()
+[![React Native](https://img.shields.io/badge/React%20Native-0.70+-61DAFB?logo=react&logoColor=white)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-51+-000020?logo=expo&logoColor=white)](https://expo.dev/)
+[![PWA](https://img.shields.io/badge/PWA-Ready-5A0FC8?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20Web-success)]()
 
-## 🎥 [Watch Demo Video](https://drive.google.com/file/d/1XuUuEkax09q5R2bZPG2p30YCtBQ1SUr8/view?usp=drivesdk)
-
-Cook fast with what you already have. MinuteMeals matches your pantry to **quick recipes** using AI, shows what you can cook **now**, and builds a shopping list for missing items.  
-> **React Native + Expo** (Mobile + Web) with **Node.js backend**, **MongoDB**, **Google Gemini AI** for recipes, and **Azure Vision** for ingredient scanning.
-
----
-
-## 1. Project Title
-**MinuteMeals — Pantry-Based Quick Recipes App**
+### **Cook fast with what you already have.**
+MinuteMeals is an intelligent recipe assistant that matches your **existing pantry** to **quick recipes** using AI. It identifies what you can cook **right now**, generates shopping lists for missing items, and helps you reduce food waste.
 
 ---
 
-## 2. Name & Roll Number
-**Pranay Chitare — 2024-B-16102004**
+## ✨ Key Features
+
+*   **🧠 AI Chef (Gemini 2.5)**: Generates creative, personalized recipes based *exactly* on your ingredients.
+*   **📸 Smart Vision (Azure)**: Snap a photo of your fridge or pantry to auto-detect ingredients.
+*   **🥘 Cook Now**: Instantly see recipes you can make with 0 shopping.
+*   **🛒 One-Tap Shopping**: Automatically adds missing ingredients to your shopping list with smart quantity merging.
+*   **🌐 PWA Support**: Installable on **Android, iOS, and Desktop** directly from the browser with offline capabilities.
+*   **📱 Native Android App**: High-performance compiled APK for Android devices.
 
 ---
 
-## 3. Problem Statement
-People waste time deciding what to cook and often skip simple meals they could make with ingredients already at home. Typical recipe apps assume you have everything and don’t reflect your **actual pantry**.
+## 🛠️ Technology Stack
+
+| Component | Technology |
+|:--- |:--- |
+| **Frontend** | React Native, Expo, React Navigation |
+| **Web / PWA** | React Native Web, Expo Router, Service Workers |
+| **Backend** | Node.js, Express.js |
+| **Database** | MongoDB Atlas (Mongoose) |
+| **AI Engine** | Google Gemini 2.5 Flash Lite |
+| **Vision** | Azure Computer Vision |
+| **Distribution** | EAS Build (APK), Vercel/Render (Web) |
 
 ---
 
-## 4. Proposed Solution / Idea
-A **React Native + Expo** app with **Node.js backend** that:
-- Lets users select what's in their **pantry** or **scan ingredients** using Azure Vision AI,
-- Generates **personalized recipes** using Google Gemini AI based on available ingredients,
-- Shows **Cook Now** recipes (all ingredients available) or **Missing items** for partial matches,
-- Creates a **shopping list** for missing ingredients with smart quantity merging,
-- Requires **internet connection** for AI recipe generation and ingredient scanning.
+## 🚀 Getting Started
 
----
+### 1. Download the App
+*   **Android (APK)**: [Download Latest Release](https://github.com/Pranay44444/MInuteMeals/releases/latest)
+*   **Web (PWA)**: Visit the deployed URL (e.g., `https://minutemeals.onrender.com`) and click **"Install App"**.
 
-## 5. Key Features
-- ✅ Pantry picker (search + checkboxes)  
-- ✅ **AI-powered ingredient scanning** using Azure Vision
-- ✅ **Smart recipe generation** using Google Gemini AI based on your pantry
-- ✅ Instant match: **Cook Now** or **Missing items**  
-- ✅ One-tap **Add to Shopping List** (merge quantities)  
-- ✅ Filters: veg/non-veg • max time • cuisine • difficulty  
-- ✅ Favorites & shareable recipe cards  
-- ✅ User authentication and personalized pantry management
+### 2. Local Development
 
----
+#### Prerequisites
+*   Node.js (v18+)
+*   Expo CLI
+*   MongoDB Atlas Account
+*   Google Gemini & Azure Vision Keys
 
-## 6. Target Users / Audience
-Students, working professionals, hostels/PGs, busy families—anyone who wants **fast, simple** home-cooking.
-
----
-
-## 7. Technology Stack
-**Frontend:**
-- React Native + **Expo** (Android • iOS • Web)
-
-**Backend:**
-- **Node.js** (Express)
-- **DataBase:** MongoDB Atlas (Mongoose)
-- **Find Recipes:** Google Gemini 2.5 Flash Lite
-- **Scan Items:** Azure Vision
-- **Tools:** ngrok (Tunneling)
-
----
-
-## 8. Expected Outcome
-- Generate **personalized recipes** using AI based on available ingredients
-- Clear **Cook Now** vs **Missing items** decisions with match percentages
-- **Ingredient scanning** from photos using computer vision
-- Simple shopping list flow with smart quantity merging
-- Favorites & sharing functionality
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js (v16+)
-- npm or yarn
-- Expo CLI
-- MongoDB Atlas account (free tier)
-- Google Gemini API key
-- Azure Vision API credentials
-
-### Installation
-
+#### Installation
 ```bash
-# Clone
+# Clone the repository
 git clone https://github.com/Pranay44444/MInuteMeals.git
 cd MinuteMeals
 
-# Install frontend dependencies
+# Install dependencies
 npm install
-
-# Install backend dependencies
-cd backend
-npm install
-cd ..
+cd backend && npm install && cd ..
 ```
 
-### Configuration
-
-Create `app.json` in the root directory with your API keys:
-```json
-{
-  "expo": {
-    "extra": {
-      "geminiApiKey": "YOUR_GEMINI_API_KEY",
-      "azureVisionEndpoint": "YOUR_AZURE_ENDPOINT",
-      "azureVisionKey": "YOUR_AZURE_KEY",
-      "backendUrl": "http://localhost:3000"
-    }
+#### Configuration
+Create a `secrets.js` or configure `app.config.js` with your keys:
+```javascript
+export default {
+  extra: {
+    geminiApiKey: "YOUR_GEMINI_KEY",
+    azureVisionKey: "YOUR_AZURE_KEY",
+    azureVisionEndpoint: "YOUR_AZURE_ENDPOINT",
+    backendUrl: "http://localhost:3000" // or your simple IP
   }
 }
 ```
 
-### Running the App
-
+#### Run the App
 ```bash
-# Terminal 1: Start backend
+# Start Backend
 cd backend
 node server.js
 
-# Terminal 2: Start Expo (mobile)
-npx expo start           # press 'a' for Android or 'i' for iOS
-
-# Or run on web
-npx expo start --web
+# Start Frontend (in a new terminal)
+npx expo start
+# Press 'a' for Android, 'w' for Web
 ```
 
-### For Development with Real Device
-Use ngrok to expose your local backend:
-```bash
-# Terminal 3: Expose backend
-ngrok http 3000
-# Update app.json backendUrl with ngrok URL
-```
+---
 
-## 👨‍💻 Made with ❤️ by
+## 🤝 Contributing
+Contributions are welcome! Please fork the repository and submit a pull request.
 
-[Pranay Chitare](https://github.com/Pranay44444)
+## 👨‍💻 Author
+**Pranay Chitare**
+[GitHub](https://github.com/Pranay44444)
