@@ -9,9 +9,20 @@ import { useStore, setPantry, setFavorites, setShoppingList, mergeItems, setInit
 export default function Settings() {
     const [user, setUser] = useState(null)
     const [syncing, setSyncing] = useState(false)
+    const [deferredPrompt, setDeferredPrompt] = useState(null)
     const { state, dispatch } = useStore()
 
-    useEffect(() => { loadUser() }, [])
+    useEffect(() => {
+        loadUser()
+        if (Platform.OS === 'web') {
+            const handler = (e) => {
+                e.preventDefault()
+                setDeferredPrompt(e)
+            }
+            window.addEventListener('beforeinstallprompt', handler)
+            return () => window.removeEventListener('beforeinstallprompt', handler)
+        }
+    }, [])
 
     const loadUser = async () => {
         const u = await getUser()
@@ -161,6 +172,16 @@ export default function Settings() {
                     <View style={styles.card}>
                         <Text style={styles.appName}>MinuteMeals</Text>
                         <Text style={styles.version}>Version 1.0.0</Text>
+                        {deferredPrompt && (
+                            <TouchableOpacity style={styles.installBtn} onPress={async () => {
+                                deferredPrompt.prompt()
+                                const { outcome } = await deferredPrompt.userChoice
+                                if (outcome === 'accepted') setDeferredPrompt(null)
+                            }}>
+                                <Ionicons name="download" size={20} color="white" />
+                                <Text style={styles.installText}>Install App</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </ScrollView>
@@ -186,5 +207,7 @@ const styles = StyleSheet.create({
     inBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#007AFF', padding: 14, borderRadius: 8 },
     inText: { color: 'white', fontSize: 16, fontWeight: '600', marginLeft: 8 },
     appName: { fontSize: 18, fontWeight: '600', color: '#333', textAlign: 'center' },
-    version: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 4 }
+    version: { fontSize: 14, color: '#666', textAlign: 'center', marginTop: 4 },
+    installBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#34C759', padding: 12, borderRadius: 8, marginTop: 16 },
+    installText: { color: 'white', fontSize: 16, fontWeight: '600', marginLeft: 8 }
 })

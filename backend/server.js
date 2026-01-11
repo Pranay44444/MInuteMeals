@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000
 
 app.use(cors({ origin: true, credentials: true }))
 app.use(cors({ origin: true, credentials: true }))
-app.set('trust proxy', 1) // trust first proxy
+app.set('trust proxy', 1) // trust 1st proxy
 app.use(express.json())
 app.use(session({
     secret: process.env.SESSION_SECRET,
