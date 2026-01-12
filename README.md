@@ -38,7 +38,7 @@ MinuteMeals is an intelligent recipe assistant that matches your **existing pant
 
 ### 1. Download the App
 *   **Android (APK)**: [Download Latest Release](https://github.com/Pranay44444/MInuteMeals/releases/latest)
-*   **Web (PWA)**: Visit the deployed URL (e.g., `https://minutemeals.onrender.com`) and click **"Install App"**.
+*   **Web (PWA)**: Visit the deployed URL (https://minutemeals.vercel.app) and click **"Install App"**.
 
 ### 2. Local Development
 
