@@ -12,8 +12,23 @@
     <link rel="icon" type="image/png" href="/icon.png" />
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js');
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js');
+
+                    // Check for SW updates every 60 seconds (catches env-only redeploys)
+                    setInterval(() => registration.update(), 60 * 1000);
+                } catch (err) {
+                    console.warn('SW registration failed:', err);
+                }
+            });
+
+            // When a new SW takes control, reload to get the fresh app shell
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
             });
         }
     </script>
