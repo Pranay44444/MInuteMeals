@@ -171,7 +171,7 @@ export default function Settings() {
                     <Text style={styles.sectionTitle}>About</Text>
                     <View style={styles.card}>
                         <Text style={styles.appName}>MinuteMeals</Text>
-                        <Text style={styles.version}>Version 1.0.0</Text>
+                        <Text style={styles.version}>Version 1.0.2</Text>
                         {deferredPrompt && (
                             <TouchableOpacity style={styles.installBtn} onPress={async () => {
                                 deferredPrompt.prompt()
